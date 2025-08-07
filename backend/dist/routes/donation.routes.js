@@ -1,0 +1,288 @@
+import { Router } from 'express';
+import { db } from '../db/index.js';
+import { donations, campaigns } from '../db/schema.js';
+import { eq } from 'drizzle-orm';
+import { z } from 'zod';
+import { stripeService } from '../services/stripe.service.js';
+const router = Router();
+// Create payment intent
+router.post('/create-payment-intent', async (req, res) => {
+    try {
+        const validatedData = createPaymentIntentSchema.parse(req.body);
+        // Check if campaign exists and is active
+        const campaign = await db.query.campaigns.findFirst({
+            where: eq(campaigns.id, validatedData.campaignId),
+        });
+        if (!campaign) {
+            return res.status(404).json({
+                success: false,
+                message: 'Campaign not found',
+            });
+        }
+        if (!campaign.isActive) {
+            return res.status(400).json({
+                success: false,
+                message: 'Campaign is not active',
+            });
+        }
+        // Create payment intent with Stripe
+        const paymentIntent = await stripeService.createPaymentIntent(validatedData.amount, 'usd', {
+            campaignId: validatedData.campaignId,
+            donorName: validatedData.donorName,
+            donorEmail: validatedData.donorEmail,
+        });
+        res.status(200).json({
+            success: true,
+            data: {
+                clientSecret: paymentIntent.client_secret,
+                paymentIntentId: paymentIntent.id,
+            },
+        });
+    }
+    catch (error) {
+        if (error instanceof z.ZodError) {
+            return res.status(400).json({
+                success: false,
+                message: 'Validation error',
+                errors: error.issues,
+            });
+        }
+        console.error('Payment intent creation error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Internal server error',
+        });
+    }
+});
+// Validation schemas
+const createPaymentIntentSchema = z.object({
+    campaignId: z.string().uuid(),
+    amount: z.number().positive().max(10000),
+    donorName: z.string().min(1).max(100),
+    donorEmail: z.string().email(),
+});
+const createDonationSchema = z.object({
+    campaignId: z.string().uuid(),
+    amount: z.number().positive().max(10000),
+    donorName: z.string().min(1).max(100),
+    donorEmail: z.string().email(),
+    donorPhone: z.string().optional(),
+    message: z.string().max(500).optional(),
+    isAnonymous: z.boolean().default(false),
+    paymentIntentId: z.string(),
+    billingAddress: z.object({
+        address: z.string(),
+        city: z.string(),
+        state: z.string(),
+        zip: z.string(),
+        country: z.string(),
+    }).optional(),
+});
+// Create donation
+router.post('/', async (req, res) => {
+    try {
+        const validatedData = createDonationSchema.parse(req.body);
+        // Check if campaign exists and is active
+        const campaign = await db.query.campaigns.findFirst({
+            where: eq(campaigns.id, validatedData.campaignId),
+        });
+        if (!campaign) {
+            return res.status(404).json({
+                success: false,
+                message: 'Campaign not found',
+            });
+        }
+        if (!campaign.isActive) {
+            return res.status(400).json({
+                success: false,
+                message: 'Campaign is not active',
+            });
+        }
+        // Verify payment intent with Stripe
+        const paymentIntent = await stripeService.getPaymentIntent(validatedData.paymentIntentId);
+        if (paymentIntent.status !== 'succeeded') {
+            return res.status(400).json({
+                success: false,
+                message: 'Payment has not been completed',
+            });
+        }
+        // Verify the payment amount matches
+        const expectedAmount = Math.round(validatedData.amount * 100); // Convert to cents
+        if (paymentIntent.amount !== expectedAmount) {
+            return res.status(400).json({
+                success: false,
+                message: 'Payment amount mismatch',
+            });
+        }
+        // Create donation record
+        const [donation] = await db.insert(donations).values({
+            campaignId: validatedData.campaignId,
+            amount: validatedData.amount.toString(),
+            currency: 'USD',
+            donorName: validatedData.isAnonymous ? null : validatedData.donorName,
+            donorEmail: validatedData.donorEmail,
+            message: validatedData.message || null,
+            isAnonymous: validatedData.isAnonymous,
+            paymentMethod: 'card',
+            status: 'completed',
+            paymentIntentId: validatedData.paymentIntentId,
+        }).returning();
+        // Update campaign's current amount
+        const currentAmount = parseFloat(campaign.currentAmount);
+        const newAmount = currentAmount + validatedData.amount;
+        await db.update(campaigns)
+            .set({ currentAmount: newAmount.toString() })
+            .where(eq(campaigns.id, validatedData.campaignId));
+        // TODO: Send confirmation email to donor
+        // TODO: Send notification email to campaign creator
+        res.status(201).json({
+            success: true,
+            message: 'Donation processed successfully',
+            data: {
+                donation: {
+                    ...donation,
+                    campaign: {
+                        id: campaign.id,
+                        title: campaign.title,
+                        slug: campaign.slug,
+                        coverImage: campaign.coverImage,
+                    },
+                },
+            },
+        });
+    }
+    catch (error) {
+        if (error instanceof z.ZodError) {
+            return res.status(400).json({
+                success: false,
+                message: 'Validation error',
+                errors: error.issues,
+            });
+        }
+        console.error('Donation creation error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Internal server error',
+        });
+    }
+});
+// Get donation by ID
+router.get('/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const donation = await db.query.donations.findFirst({
+            where: eq(donations.id, id),
+            with: {
+                campaign: {
+                    columns: {
+                        id: true,
+                        title: true,
+                        slug: true,
+                        coverImage: true,
+                    },
+                },
+            },
+        });
+        if (!donation) {
+            return res.status(404).json({
+                success: false,
+                message: 'Donation not found',
+            });
+        }
+        res.json({
+            success: true,
+            data: { donation },
+        });
+    }
+    catch (error) {
+        console.error('Get donation error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Internal server error',
+        });
+    }
+});
+// Get donations for a campaign
+router.get('/campaign/:campaignId', async (req, res) => {
+    try {
+        const { campaignId } = req.params;
+        const page = parseInt(req.query.page) || 1;
+        const limit = parseInt(req.query.limit) || 10;
+        const offset = (page - 1) * limit;
+        // Check if campaign exists
+        const campaign = await db.query.campaigns.findFirst({
+            where: eq(campaigns.id, campaignId),
+        });
+        if (!campaign) {
+            return res.status(404).json({
+                success: false,
+                message: 'Campaign not found',
+            });
+        }
+        const campaignDonations = await db.query.donations.findMany({
+            where: eq(donations.campaignId, campaignId),
+            limit,
+            offset,
+            orderBy: (donations, { desc }) => [desc(donations.createdAt)],
+        });
+        // Get total count for pagination
+        const totalResult = await db.query.donations.findMany({
+            where: eq(donations.campaignId, campaignId),
+        });
+        const total = totalResult.length;
+        const totalPages = Math.ceil(total / limit);
+        const hasNext = page < totalPages;
+        const hasPrev = page > 1;
+        res.json({
+            success: true,
+            data: {
+                donations: campaignDonations,
+                pagination: {
+                    page,
+                    limit,
+                    total,
+                    totalPages,
+                    hasNext,
+                    hasPrev,
+                },
+            },
+        });
+    }
+    catch (error) {
+        console.error('Get campaign donations error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Internal server error',
+        });
+    }
+});
+// Stripe webhook endpoint
+router.post('/webhook', async (req, res) => {
+    try {
+        const signature = req.headers['stripe-signature'];
+        if (!signature) {
+            return res.status(400).json({
+                success: false,
+                message: 'Missing stripe signature',
+            });
+        }
+        // Construct the event from the webhook payload and signature
+        const event = stripeService.constructEvent(req.body, signature);
+        // Process the webhook event
+        const result = await stripeService.processWebhookEvent(event);
+        res.status(200).json({
+            success: true,
+            message: 'Webhook processed',
+            data: result,
+        });
+    }
+    catch (error) {
+        console.error('Webhook processing error:', error);
+        res.status(400).json({
+            success: false,
+            message: 'Webhook processing failed',
+        });
+    }
+});
+export default router;
+//# sourceMappingURL=donation.routes.js.map

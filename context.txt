@@ -1,0 +1,5 @@
+always keep the UI consistent
+do not remove any code snippet
+always ask for instruction if something is not clear for you
+give the security and performance priority
+use typescript
