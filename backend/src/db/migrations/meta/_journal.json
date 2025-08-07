@@ -15,6 +15,13 @@
       "when": 1754561024307,
       "tag": "0001_gray_shocker",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1754576681796,
+      "tag": "0002_goofy_bushwacker",
+      "breakpoints": true
     }
   ]
 }

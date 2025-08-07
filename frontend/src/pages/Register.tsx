@@ -5,7 +5,7 @@ import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { Alert, AlertDescription } from '../components/ui/alert';
-import { Eye, EyeOff, Loader2, CheckCircle } from 'lucide-react';
+import { Eye, EyeOff, Loader2, CheckCircle, ArrowLeft } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import apiService from '../services/api.service';
 
@@ -117,6 +117,12 @@ export const Register: React.FC = () => {
           >
             Go to Dashboard
           </Button>
+          <Link to="/">
+            <Button variant="outline" className="w-full">
+              <ArrowLeft className="mr-2 h-4 w-4" />
+              Back to home
+            </Button>
+          </Link>
         </div>
       </AuthLayout>
     );
@@ -129,6 +135,17 @@ export const Register: React.FC = () => {
       image="https://images.unsplash.com/photo-1582213782179-e0d53f98f2ca?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1740&q=80"
       imageAlt="Community fundraising"
     >
+      {/* Back Button */}
+      <div className="mb-6">
+        <Link
+          to="/"
+          className="inline-flex items-center text-sm font-medium text-blue-600 hover:text-blue-500 transition-colors"
+        >
+          <ArrowLeft className="mr-2 h-4 w-4" />
+          Back to home
+        </Link>
+      </div>
+
       <form onSubmit={handleSubmit} className="space-y-6">
         {error && (
           <Alert variant="destructive">

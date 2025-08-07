@@ -645,6 +645,20 @@ class ApiService {
     const response = await fetch(`${API_BASE_URL}/api/payouts/settings`);
     return this.handleResponse(response);
   }
+
+  // Report functionality
+  static async reportCampaign(data: {
+    campaignId: string;
+    reason: 'spam' | 'inappropriate' | 'fraud' | 'offensive' | 'copyright' | 'other';
+    description: string;
+  }): Promise<ApiResponse<{ reportId: string }>> {
+    const response = await fetch(`${API_BASE_URL}/api/reports`, {
+      method: 'POST',
+      headers: this.getAuthHeaders(),
+      body: JSON.stringify(data),
+    });
+    return this.handleResponse(response);
+  }
 }
 
 export default ApiService;

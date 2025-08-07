@@ -11,6 +11,7 @@ import { Footer } from "@/components/Footer";
 import { DonateForm } from "@/components/DonateForm";
 import { CommentsSection } from "@/components/CommentsSection";
 import { FollowButton } from "@/components/FollowButton";
+import { ReportCampaignModal } from "@/components/ReportCampaignModal";
 import { useToast } from "@/hooks/use-toast";
 import ApiService from "@/services/api.service";
 import { CampaignDetail as CampaignDetailType, Donation } from "@/types";
@@ -37,6 +38,7 @@ const CampaignDetail = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [donateModalOpen, setDonateModalOpen] = useState(false);
+  const [reportModalOpen, setReportModalOpen] = useState(false);
 
   const fetchCampaignData = async () => {
     if (!id) {
@@ -101,8 +103,7 @@ const CampaignDetail = () => {
   };
 
   const handleReport = () => {
-    // TODO: Implement report campaign functionality
-    console.log('Report campaign:', campaign?.id);
+    setReportModalOpen(true);
   };
 
   if (loading) {
@@ -476,6 +477,16 @@ const CampaignDetail = () => {
               description: "Your donation has been received successfully.",
             });
           }}
+        />
+      )}
+
+      {/* Report Campaign Modal */}
+      {campaign && (
+        <ReportCampaignModal
+          isOpen={reportModalOpen}
+          onClose={() => setReportModalOpen(false)}
+          campaignId={campaign.id}
+          campaignTitle={campaign.title}
         />
       )}
     </div>

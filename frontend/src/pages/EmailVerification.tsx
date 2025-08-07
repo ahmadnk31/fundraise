@@ -3,7 +3,7 @@ import { Link, useSearchParams, useNavigate } from 'react-router-dom';
 import { AuthLayout } from '../components/AuthLayout';
 import { Button } from '../components/ui/button';
 import { Alert, AlertDescription } from '../components/ui/alert';
-import { CheckCircle, XCircle, Loader2 } from 'lucide-react';
+import { CheckCircle, XCircle, Loader2, ArrowLeft } from 'lucide-react';
 import apiService from '../services/api.service';
 
 export const EmailVerification: React.FC = () => {
@@ -62,6 +62,12 @@ export const EmailVerification: React.FC = () => {
               We're verifying your email address. This should only take a moment...
             </p>
           </div>
+          <Link to="/">
+            <Button variant="outline" className="w-full">
+              <ArrowLeft className="mr-2 h-4 w-4" />
+              Back to home
+            </Button>
+          </Link>
         </div>
       </AuthLayout>
     );
@@ -98,6 +104,12 @@ export const EmailVerification: React.FC = () => {
             <Link to="/create-campaign">
               <Button variant="outline" className="w-full">
                 Create Your First Campaign
+              </Button>
+            </Link>
+            <Link to="/">
+              <Button variant="ghost" className="w-full">
+                <ArrowLeft className="mr-2 h-4 w-4" />
+                Back to home
               </Button>
             </Link>
           </div>
@@ -141,9 +153,10 @@ export const EmailVerification: React.FC = () => {
               Go to Login
             </Button>
           </Link>
-          <Link to="/register">
+          <Link to="/">
             <Button variant="outline" className="w-full">
-              Create New Account
+              <ArrowLeft className="mr-2 h-4 w-4" />
+              Back to home
             </Button>
           </Link>
         </div>
