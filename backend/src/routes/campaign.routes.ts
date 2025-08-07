@@ -125,6 +125,8 @@ router.get('/', optionalAuthMiddleware, async (req, res) => {
         currency: campaigns.currency,
         deadline: campaigns.deadline,
         coverImage: campaigns.coverImage,
+        isActive: campaigns.isActive,
+        isApproved: campaigns.isApproved,
         isFeatured: campaigns.isFeatured,
         createdAt: campaigns.createdAt,
         user: {
@@ -197,6 +199,8 @@ router.get('/:identifier', optionalAuthMiddleware, async (req, res) => {
         budgetBreakdown: campaigns.budgetBreakdown,
         coverImage: campaigns.coverImage,
         additionalMedia: campaigns.additionalMedia,
+        isActive: campaigns.isActive,
+        isApproved: campaigns.isApproved,
         isFeatured: campaigns.isFeatured,
         createdAt: campaigns.createdAt,
         updatedAt: campaigns.updatedAt,

@@ -9,6 +9,8 @@ import campaignRoutes from './routes/campaign.routes.js';
 import uploadRoutes from './routes/upload.routes.js';
 import userRoutes from './routes/user.routes.js';
 import donationRoutes from './routes/donation.routes.js';
+import commentRoutes from './routes/comment.routes.js';
+import followRoutes from './routes/follow.routes.js';
 const app = express();
 const PORT = process.env.PORT || 3001;
 // Security middleware
@@ -39,6 +41,8 @@ app.use('/api/campaigns', campaignRoutes);
 app.use('/api/upload', uploadRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/donations', donationRoutes);
+app.use('/api/comments', commentRoutes);
+app.use('/api/follows', followRoutes);
 // 404 handler
 app.use((req, res) => {
     res.status(404).json({

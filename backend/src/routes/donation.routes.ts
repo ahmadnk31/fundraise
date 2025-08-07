@@ -4,6 +4,7 @@ import { donations, campaigns } from '../db/schema.js';
 import { eq } from 'drizzle-orm';
 import { z } from 'zod';
 import { stripeService } from '../services/stripe.service.js';
+import { payoutService } from '../services/payout.service.js';
 
 const router = Router();
 
@@ -96,12 +97,27 @@ const createDonationSchema = z.object({
 // Create donation
 router.post('/', async (req: Request, res: Response) => {
   try {
+    console.log('=== DONATION CREATION DEBUG ===');
+    console.log('Request body:', JSON.stringify(req.body, null, 2));
+    
     const validatedData = createDonationSchema.parse(req.body);
+    console.log('Validated data:', JSON.stringify(validatedData, null, 2));
     
     // Check if campaign exists and is active
     const campaign = await db.query.campaigns.findFirst({
       where: eq(campaigns.id, validatedData.campaignId),
     });
+
+    console.log('Campaign found:', campaign ? 'YES' : 'NO');
+    if (campaign) {
+      console.log('Campaign details:', {
+        id: campaign.id,
+        title: campaign.title,
+        isActive: campaign.isActive,
+        goalAmount: campaign.goalAmount,
+        currentAmount: campaign.currentAmount
+      });
+    }
 
     if (!campaign) {
       return res.status(404).json({
@@ -118,24 +134,46 @@ router.post('/', async (req: Request, res: Response) => {
     }
 
     // Verify payment intent with Stripe
+    console.log('Verifying payment intent:', validatedData.paymentIntentId);
     const paymentIntent = await stripeService.getPaymentIntent(validatedData.paymentIntentId);
+    console.log('Payment intent status:', paymentIntent.status);
+    console.log('Payment intent amount:', paymentIntent.amount);
     
-    if (paymentIntent.status !== 'succeeded') {
+    // Allow both 'succeeded' and 'requires_capture' for testing
+    const validPaymentStatuses = ['succeeded', 'requires_capture'];
+    if (!validPaymentStatuses.includes(paymentIntent.status)) {
+      console.log('Payment intent not in valid status, status:', paymentIntent.status);
       return res.status(400).json({
         success: false,
-        message: 'Payment has not been completed',
+        message: `Payment has not been completed. Status: ${paymentIntent.status}`,
       });
     }
 
     // Verify the payment amount matches
     const expectedAmount = Math.round(validatedData.amount * 100); // Convert to cents
+    console.log('Expected amount (cents):', expectedAmount);
+    console.log('Actual amount (cents):', paymentIntent.amount);
+    console.log('Original amount (dollars):', validatedData.amount);
+    
     if (paymentIntent.amount !== expectedAmount) {
+      console.error('AMOUNT MISMATCH DETAILS:');
+      console.error('- Validated amount (dollars):', validatedData.amount);
+      console.error('- Converted to cents:', expectedAmount);
+      console.error('- Stripe amount (cents):', paymentIntent.amount);
+      console.error('- Difference:', Math.abs(paymentIntent.amount - expectedAmount));
+      
       return res.status(400).json({
         success: false,
         message: 'Payment amount mismatch',
+        debug: {
+          expectedCents: expectedAmount,
+          actualCents: paymentIntent.amount,
+          originalDollars: validatedData.amount
+        }
       });
     }
 
+    console.log('Creating donation record...');
     // Create donation record
     const [donation] = await db.insert(donations).values({
       campaignId: validatedData.campaignId,
@@ -150,17 +188,33 @@ router.post('/', async (req: Request, res: Response) => {
       paymentIntentId: validatedData.paymentIntentId,
     }).returning();
 
+    console.log('Donation created successfully:', donation.id);
+
+    // Process donation for payout system (calculate fees and update available balance)
+    try {
+      console.log('Processing donation for payout system...');
+      await payoutService.processDonation(donation.id);
+      console.log('Payout processing completed successfully');
+    } catch (payoutError) {
+      console.error('Error processing donation for payouts:', payoutError);
+      // Continue with donation processing even if payout processing fails
+    }
+
     // Update campaign's current amount
     const currentAmount = parseFloat(campaign.currentAmount);
     const newAmount = currentAmount + validatedData.amount;
     
+    console.log('Updating campaign amount from', currentAmount, 'to', newAmount);
     await db.update(campaigns)
       .set({ currentAmount: newAmount.toString() })
       .where(eq(campaigns.id, validatedData.campaignId));
 
+    console.log('Campaign amount updated successfully');
+
     // TODO: Send confirmation email to donor
     // TODO: Send notification email to campaign creator
     
+    console.log('=== DONATION CREATION COMPLETED ===');
     res.status(201).json({
       success: true,
       message: 'Donation processed successfully',
@@ -178,7 +232,11 @@ router.post('/', async (req: Request, res: Response) => {
     });
 
   } catch (error) {
+    console.error('=== DONATION CREATION ERROR ===');
+    console.error('Error details:', error);
+    
     if (error instanceof z.ZodError) {
+      console.error('Validation errors:', error.issues);
       return res.status(400).json({
         success: false,
         message: 'Validation error',

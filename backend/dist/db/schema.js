@@ -1,5 +1,5 @@
 import { pgTable, text, uuid, timestamp, boolean, decimal, jsonb } from 'drizzle-orm/pg-core';
-import { sql } from 'drizzle-orm';
+import { sql, relations } from 'drizzle-orm';
 export const users = pgTable('users', {
     id: uuid('id').primaryKey().default(sql `gen_random_uuid()`),
     email: text('email').notNull().unique(),
@@ -83,4 +83,74 @@ export const follows = pgTable('follows', {
     userId: uuid('user_id').references(() => users.id, { onDelete: 'cascade' }).notNull(),
     createdAt: timestamp('created_at').defaultNow().notNull(),
 });
+// Define relations
+export const usersRelations = relations(users, ({ many }) => ({
+    campaigns: many(campaigns),
+    donations: many(donations),
+    comments: many(comments),
+    likes: many(likes),
+    follows: many(follows),
+}));
+export const campaignsRelations = relations(campaigns, ({ one, many }) => ({
+    user: one(users, {
+        fields: [campaigns.userId],
+        references: [users.id],
+    }),
+    donations: many(donations),
+    updates: many(campaignUpdates),
+    comments: many(comments),
+    likes: many(likes),
+    follows: many(follows),
+}));
+export const donationsRelations = relations(donations, ({ one }) => ({
+    campaign: one(campaigns, {
+        fields: [donations.campaignId],
+        references: [campaigns.id],
+    }),
+    donor: one(users, {
+        fields: [donations.donorId],
+        references: [users.id],
+    }),
+}));
+export const campaignUpdatesRelations = relations(campaignUpdates, ({ one }) => ({
+    campaign: one(campaigns, {
+        fields: [campaignUpdates.campaignId],
+        references: [campaigns.id],
+    }),
+}));
+export const commentsRelations = relations(comments, ({ one, many }) => ({
+    campaign: one(campaigns, {
+        fields: [comments.campaignId],
+        references: [campaigns.id],
+    }),
+    user: one(users, {
+        fields: [comments.userId],
+        references: [users.id],
+    }),
+    parent: one(comments, {
+        fields: [comments.parentId],
+        references: [comments.id],
+    }),
+    replies: many(comments),
+}));
+export const likesRelations = relations(likes, ({ one }) => ({
+    campaign: one(campaigns, {
+        fields: [likes.campaignId],
+        references: [campaigns.id],
+    }),
+    user: one(users, {
+        fields: [likes.userId],
+        references: [users.id],
+    }),
+}));
+export const followsRelations = relations(follows, ({ one }) => ({
+    campaign: one(campaigns, {
+        fields: [follows.campaignId],
+        references: [campaigns.id],
+    }),
+    user: one(users, {
+        fields: [follows.userId],
+        references: [users.id],
+    }),
+}));
 //# sourceMappingURL=schema.js.map

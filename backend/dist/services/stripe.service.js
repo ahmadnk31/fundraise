@@ -87,20 +87,38 @@ export class StripeService {
      * Process webhook event
      */
     async processWebhookEvent(event) {
-        console.log('Processing Stripe webhook event:', event.type);
+        console.log('🎣 Processing Stripe webhook event:', event.type);
         switch (event.type) {
             case 'payment_intent.succeeded':
                 const paymentIntent = event.data.object;
-                console.log('Payment succeeded:', paymentIntent.id);
-                // Handle successful payment
-                return { success: true, paymentIntentId: paymentIntent.id };
+                console.log('💰 Payment succeeded:', paymentIntent.id);
+                console.log('📊 Payment metadata:', paymentIntent.metadata);
+                // Handle successful payment - you can implement auto-donation creation here if needed
+                return {
+                    success: true,
+                    paymentIntentId: paymentIntent.id,
+                    message: 'Payment succeeded, donation can be recorded'
+                };
             case 'payment_intent.payment_failed':
                 const failedPayment = event.data.object;
-                console.log('Payment failed:', failedPayment.id);
+                console.log('❌ Payment failed:', failedPayment.id);
+                console.log('🔍 Failure reason:', failedPayment.last_payment_error?.message);
                 // Handle failed payment
-                return { success: false, paymentIntentId: failedPayment.id };
+                return {
+                    success: false,
+                    paymentIntentId: failedPayment.id,
+                    message: 'Payment failed'
+                };
+            case 'payment_intent.canceled':
+                const canceledPayment = event.data.object;
+                console.log('🚫 Payment canceled:', canceledPayment.id);
+                return {
+                    success: false,
+                    paymentIntentId: canceledPayment.id,
+                    message: 'Payment canceled'
+                };
             default:
-                console.log('Unhandled event type:', event.type);
+                console.log('🤷 Unhandled event type:', event.type);
                 return { success: true, message: 'Event received but not handled' };
         }
     }

@@ -26,7 +26,7 @@ export declare class StripeService {
     processWebhookEvent(event: Stripe.Event): Promise<{
         success: boolean;
         paymentIntentId: string;
-        message?: undefined;
+        message: string;
     } | {
         success: boolean;
         message: string;

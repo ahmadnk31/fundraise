@@ -78,7 +78,7 @@ const StripeCheckoutForm: React.FC<StripeCheckoutFormProps> = ({
         <AddressElement
           options={{
             mode: 'billing',
-            allowedCountries: ['US'],
+            
             fields: {
               phone: 'always',
             },

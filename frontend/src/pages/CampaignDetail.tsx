@@ -9,6 +9,8 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Navigation } from "@/components/Navigation";
 import { Footer } from "@/components/Footer";
 import { DonateForm } from "@/components/DonateForm";
+import { CommentsSection } from "@/components/CommentsSection";
+import { FollowButton } from "@/components/FollowButton";
 import { useToast } from "@/hooks/use-toast";
 import ApiService from "@/services/api.service";
 import { CampaignDetail as CampaignDetailType, Donation } from "@/types";
@@ -98,11 +100,6 @@ const CampaignDetail = () => {
     }
   };
 
-  const handleSave = () => {
-    // TODO: Implement save campaign functionality
-    console.log('Save campaign:', campaign?.id);
-  };
-
   const handleReport = () => {
     // TODO: Implement report campaign functionality
     console.log('Report campaign:', campaign?.id);
@@ -151,6 +148,9 @@ const CampaignDetail = () => {
   const today = new Date();
   const timeDiff = deadline.getTime() - today.getTime();
   const daysLeft = Math.max(0, Math.ceil(timeDiff / (1000 * 3600 * 24)));
+  
+  // Determine if campaign is effectively ended
+  const isEnded = !campaign.isActive || (campaign.deadline && deadline <= today);
 
   return (
     <div className="min-h-screen bg-background">
@@ -215,10 +215,16 @@ const CampaignDetail = () => {
                   <Users className="w-4 h-4" />
                   {campaign.stats?.totalDonors || 0} supporters
                 </div>
-                {daysLeft > 0 && (
+                {!isEnded && daysLeft > 0 && (
                   <div className="flex items-center gap-1">
                     <Clock className="w-4 h-4" />
                     {daysLeft} days left
+                  </div>
+                )}
+                {isEnded && (
+                  <div className="flex items-center gap-1 text-red-600">
+                    <Clock className="w-4 h-4" />
+                    Campaign ended
                   </div>
                 )}
               </div>
@@ -318,6 +324,8 @@ const CampaignDetail = () => {
                 )}
               </CardContent>
             </Card>
+            {/* Comments Section */}
+            <CommentsSection campaignId={campaign.id} />
           </div>
 
           {/* Sidebar */}
@@ -343,8 +351,12 @@ const CampaignDetail = () => {
                       <div className="text-sm text-muted-foreground">Donors</div>
                     </div>
                     <div>
-                      <div className="text-lg font-semibold">{daysLeft}</div>
-                      <div className="text-sm text-muted-foreground">Days left</div>
+                      <div className="text-lg font-semibold">
+                        {isEnded ? 0 : daysLeft}
+                      </div>
+                      <div className="text-sm text-muted-foreground">
+                        {isEnded ? 'Ended' : 'Days left'}
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -355,17 +367,20 @@ const CampaignDetail = () => {
                   <Button 
                     className="w-full bg-gradient-primary hover:opacity-90 text-lg py-3"
                     onClick={handleDonate}
-                    disabled={!campaign.isActive}
+                    disabled={isEnded}
                   >
                     <DollarSign className="w-5 h-5 mr-2" />
-                    {campaign.isActive ? 'Donate Now' : 'Campaign Ended'}
+                    {isEnded ? 'Campaign Ended' : 'Donate Now'}
                   </Button>
                   
                   <div className="grid grid-cols-2 gap-2">
-                    <Button variant="outline" className="flex-1" onClick={handleSave}>
-                      <Heart className="w-4 h-4 mr-2" />
-                      Save
-                    </Button>
+                    <FollowButton
+                      campaignId={campaign.id}
+                      onFollowChange={(isFollowing, count) => {
+                        // Optional: update local state or show feedback
+                        console.log(`Follow status changed: ${isFollowing}, count: ${count}`);
+                      }}
+                    />
                     <Button variant="outline" className="flex-1" onClick={handleShare}>
                       <Share2 className="w-4 h-4 mr-2" />
                       Share

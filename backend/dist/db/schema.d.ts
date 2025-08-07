@@ -1230,3 +1230,43 @@ export type CampaignUpdate = typeof campaignUpdates.$inferSelect;
 export type NewCampaignUpdate = typeof campaignUpdates.$inferInsert;
 export type Comment = typeof comments.$inferSelect;
 export type NewComment = typeof comments.$inferInsert;
+export type Like = typeof likes.$inferSelect;
+export type NewLike = typeof likes.$inferInsert;
+export type Follow = typeof follows.$inferSelect;
+export type NewFollow = typeof follows.$inferInsert;
+export declare const usersRelations: import("drizzle-orm").Relations<"users", {
+    campaigns: import("drizzle-orm").Many<"campaigns">;
+    donations: import("drizzle-orm").Many<"donations">;
+    comments: import("drizzle-orm").Many<"comments">;
+    likes: import("drizzle-orm").Many<"likes">;
+    follows: import("drizzle-orm").Many<"follows">;
+}>;
+export declare const campaignsRelations: import("drizzle-orm").Relations<"campaigns", {
+    user: import("drizzle-orm").One<"users", true>;
+    donations: import("drizzle-orm").Many<"donations">;
+    updates: import("drizzle-orm").Many<"campaign_updates">;
+    comments: import("drizzle-orm").Many<"comments">;
+    likes: import("drizzle-orm").Many<"likes">;
+    follows: import("drizzle-orm").Many<"follows">;
+}>;
+export declare const donationsRelations: import("drizzle-orm").Relations<"donations", {
+    campaign: import("drizzle-orm").One<"campaigns", true>;
+    donor: import("drizzle-orm").One<"users", false>;
+}>;
+export declare const campaignUpdatesRelations: import("drizzle-orm").Relations<"campaign_updates", {
+    campaign: import("drizzle-orm").One<"campaigns", true>;
+}>;
+export declare const commentsRelations: import("drizzle-orm").Relations<"comments", {
+    campaign: import("drizzle-orm").One<"campaigns", true>;
+    user: import("drizzle-orm").One<"users", true>;
+    parent: import("drizzle-orm").One<"comments", false>;
+    replies: import("drizzle-orm").Many<"comments">;
+}>;
+export declare const likesRelations: import("drizzle-orm").Relations<"likes", {
+    campaign: import("drizzle-orm").One<"campaigns", true>;
+    user: import("drizzle-orm").One<"users", true>;
+}>;
+export declare const followsRelations: import("drizzle-orm").Relations<"follows", {
+    campaign: import("drizzle-orm").One<"campaigns", true>;
+    user: import("drizzle-orm").One<"users", true>;
+}>;

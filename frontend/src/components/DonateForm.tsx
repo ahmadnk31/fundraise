@@ -130,7 +130,7 @@ export const DonateForm: React.FC<DonateFormProps> = ({
 
       const donationData = {
         campaignId: campaign.id,
-        amount: amount,
+        amount: totalAmount, // Use totalAmount that was actually charged
         donorName: formData.isAnonymous ? 'Anonymous' : formData.donorName,
         donorEmail: formData.donorEmail,
         donorPhone: formData.donorPhone,
@@ -144,7 +144,7 @@ export const DonateForm: React.FC<DonateFormProps> = ({
       if (response.success) {
         toast({
           title: "Thank you for your donation!",
-          description: `Your donation of $${amount.toFixed(2)} has been processed successfully.`,
+          description: `Your donation of $${totalAmount.toFixed(2)} has been processed successfully.`,
         });
 
         onSuccess();
@@ -168,10 +168,11 @@ export const DonateForm: React.FC<DonateFormProps> = ({
 
   const stripeOptions: StripeElementsOptions = {
     clientSecret,
+
     appearance: {
       theme: 'stripe',
       variables: {
-        colorPrimary: '#3b82f6',
+        colorPrimary: '142 71% 45%',
       },
     },
   };
@@ -183,8 +184,8 @@ export const DonateForm: React.FC<DonateFormProps> = ({
         <div className="p-6 border-b">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-3">
-              <div className="bg-blue-100 dark:bg-blue-900 p-2 rounded-full">
-                <Heart className="w-6 h-6 text-blue-600" />
+              <div className="bg-primary-100 dark:bg-primary-900 p-2 rounded-full">
+                <Heart className="w-6 h-6 text-primary" />
               </div>
               <div>
                 <h3 className="text-lg font-semibold">Support this campaign</h3>
@@ -200,27 +201,27 @@ export const DonateForm: React.FC<DonateFormProps> = ({
         {/* Progress Indicator */}
         <div className="px-6 py-4 border-b">
           <div className="flex items-center justify-between text-sm">
-            <div className={`flex items-center ${step >= 1 ? 'text-blue-600' : 'text-gray-400'}`}>
+            <div className={`flex items-center ${step >= 1 ? 'text-primary' : 'text-gray-400'}`}>
               <div className={`w-8 h-8 rounded-full flex items-center justify-center border-2 ${
-                step >= 1 ? 'border-blue-600 bg-blue-600 text-white' : 'border-gray-300'
+                step >= 1 ? 'border-primary bg-primary text-white' : 'border-gray-300'
               }`}>
                 1
               </div>
               <span className="ml-2">Amount</span>
             </div>
-            <div className={`h-1 flex-1 mx-4 ${step >= 2 ? 'bg-blue-600' : 'bg-gray-300'}`} />
-            <div className={`flex items-center ${step >= 2 ? 'text-blue-600' : 'text-gray-400'}`}>
+            <div className={`h-1 flex-1 mx-4 ${step >= 2 ? 'bg-primary' : 'bg-gray-300'}`} />
+            <div className={`flex items-center ${step >= 2 ? 'text-primary' : 'text-gray-400'}`}>
               <div className={`w-8 h-8 rounded-full flex items-center justify-center border-2 ${
-                step >= 2 ? 'border-blue-600 bg-blue-600 text-white' : 'border-gray-300'
+                step >= 2 ? 'border-primary bg-primary text-white' : 'border-gray-300'
               }`}>
                 2
               </div>
               <span className="ml-2">Details</span>
             </div>
-            <div className={`h-1 flex-1 mx-4 ${step >= 3 ? 'bg-blue-600' : 'bg-gray-300'}`} />
-            <div className={`flex items-center ${step >= 3 ? 'text-blue-600' : 'text-gray-400'}`}>
+            <div className={`h-1 flex-1 mx-4 ${step >= 3 ? 'bg-primary' : 'bg-gray-300'}`} />
+            <div className={`flex items-center ${step >= 3 ? 'text-primary' : 'text-gray-400'}`}>
               <div className={`w-8 h-8 rounded-full flex items-center justify-center border-2 ${
-                step >= 3 ? 'border-blue-600 bg-blue-600 text-white' : 'border-gray-300'
+                step >= 3 ? 'border-primary bg-primary text-white' : 'border-gray-300'
               }`}>
                 3
               </div>
@@ -378,6 +379,7 @@ export const DonateForm: React.FC<DonateFormProps> = ({
             <div className="p-6">
               <Elements options={stripeOptions} stripe={stripePromise}>
                 <StripeCheckoutForm
+                
                   clientSecret={clientSecret}
                   amount={totalAmount}
                   onSuccess={handlePaymentSuccess}

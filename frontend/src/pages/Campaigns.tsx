@@ -36,10 +36,10 @@ interface CampaignCardProps {
 
 export const Campaigns: React.FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();
-  const [searchQuery, setSearchQuery] = useState(searchParams.get('search') || '');
+  const [searchQuery, setSearchQuery] = useState(searchParams.get('search') ?? '');
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState(searchQuery);
-  const [selectedCategory, setSelectedCategory] = useState(searchParams.get('category') || 'All');
-  const [sortBy, setSortBy] = useState(searchParams.get('sortBy') || 'recent');
+  const [selectedCategory, setSelectedCategory] = useState(searchParams.get('category') ?? 'All');
+  const [sortBy, setSortBy] = useState(searchParams.get('sortBy') ?? 'recent');
   const [showFeaturedOnly, setShowFeaturedOnly] = useState(searchParams.get('featured') === 'true');
   const [campaigns, setCampaigns] = useState<CampaignCardProps[]>([]);
   const [loading, setLoading] = useState(true);

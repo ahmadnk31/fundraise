@@ -14,7 +14,13 @@ import {
   UserCampaignQueryParams,
   UserDonationQueryParams,
   SignedUrlResponse,
-  UploadResponse
+  UploadResponse,
+  Comment,
+  CreateCommentRequest,
+  UpdateCommentRequest,
+  Follow,
+  FollowCampaignRequest,
+  FollowStatus
 } from '@/types';
 // Base API configuration
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
@@ -363,6 +369,213 @@ class ApiService {
         headers: this.getAuthHeaders(),
       }
     );
+    return this.handleResponse(response);
+  }
+
+  // Comment API methods
+  static async getComments(campaignId: string, params?: {
+    page?: number;
+    limit?: number;
+  }): Promise<ApiResponse<{
+    comments: Comment[];
+    pagination: {
+      page: number;
+      limit: number;
+      total: number;
+      totalPages: number;
+      hasNext: boolean;
+      hasPrev: boolean;
+    };
+  }>> {
+    const searchParams = new URLSearchParams();
+    if (params) {
+      Object.entries(params).forEach(([key, value]) => {
+        if (value !== undefined) {
+          searchParams.append(key, value.toString());
+        }
+      });
+    }
+
+    const response = await fetch(
+      `${API_BASE_URL}/api/comments/campaign/${campaignId}?${searchParams.toString()}`
+    );
+    return this.handleResponse(response);
+  }
+
+  static async getReplies(commentId: string, params?: {
+    page?: number;
+    limit?: number;
+  }): Promise<ApiResponse<{
+    replies: Comment[];
+    pagination: {
+      page: number;
+      limit: number;
+      total: number;
+      totalPages: number;
+      hasNext: boolean;
+      hasPrev: boolean;
+    };
+  }>> {
+    const searchParams = new URLSearchParams();
+    if (params) {
+      Object.entries(params).forEach(([key, value]) => {
+        if (value !== undefined) {
+          searchParams.append(key, value.toString());
+        }
+      });
+    }
+
+    const response = await fetch(
+      `${API_BASE_URL}/api/comments/${commentId}/replies?${searchParams.toString()}`
+    );
+    return this.handleResponse(response);
+  }
+
+  static async createComment(data: CreateCommentRequest): Promise<ApiResponse<Comment>> {
+    const response = await fetch(`${API_BASE_URL}/api/comments`, {
+      method: 'POST',
+      headers: this.getAuthHeaders(),
+      body: JSON.stringify(data),
+    });
+    const result = await this.handleResponse(response) as ApiResponse<{ comment: Comment }>;
+    
+    // Backend returns { comment: commentData }, but we need just the comment
+    if (result.success && result.data?.comment) {
+      return {
+        success: result.success,
+        message: result.message,
+        data: result.data.comment
+      };
+    }
+    
+    return {
+      success: false,
+      message: result.message || 'Failed to create comment'
+    };
+  }
+
+  static async updateComment(id: string, data: UpdateCommentRequest): Promise<ApiResponse<Comment>> {
+    const response = await fetch(`${API_BASE_URL}/api/comments/${id}`, {
+      method: 'PUT',
+      headers: this.getAuthHeaders(),
+      body: JSON.stringify(data),
+    });
+    const result = await this.handleResponse(response) as ApiResponse<{ comment: Comment }>;
+    
+    // Backend returns { comment: commentData }, but we need just the comment
+    if (result.success && result.data?.comment) {
+      return {
+        success: result.success,
+        message: result.message,
+        data: result.data.comment
+      };
+    }
+    
+    return {
+      success: false,
+      message: result.message || 'Failed to update comment'
+    };
+  }
+
+  static async deleteComment(id: string): Promise<ApiResponse<void>> {
+    const response = await fetch(`${API_BASE_URL}/api/comments/${id}`, {
+      method: 'DELETE',
+      headers: this.getAuthHeaders(),
+    });
+    return this.handleResponse(response);
+  }
+
+  // Follow API methods
+  static async followCampaign(data: FollowCampaignRequest): Promise<ApiResponse<Follow>> {
+    const response = await fetch(`${API_BASE_URL}/api/follows`, {
+      method: 'POST',
+      headers: this.getAuthHeaders(),
+      body: JSON.stringify(data),
+    });
+    return this.handleResponse(response);
+  }
+
+  static async unfollowCampaign(campaignId: string): Promise<ApiResponse<void>> {
+    const response = await fetch(`${API_BASE_URL}/api/follows/${campaignId}`, {
+      method: 'DELETE',
+      headers: this.getAuthHeaders(),
+    });
+    return this.handleResponse(response);
+  }
+
+  static async getFollowStatus(campaignId: string): Promise<ApiResponse<FollowStatus>> {
+    const response = await fetch(`${API_BASE_URL}/api/follows/status/${campaignId}`, {
+      headers: this.getAuthHeaders(),
+    });
+    return this.handleResponse(response);
+  }
+
+  static async getCampaignFollowers(campaignId: string, params?: {
+    page?: number;
+    limit?: number;
+  }): Promise<ApiResponse<{
+    followers: Follow[];
+    pagination: {
+      page: number;
+      limit: number;
+      total: number;
+      totalPages: number;
+      hasNext: boolean;
+      hasPrev: boolean;
+    };
+  }>> {
+    const searchParams = new URLSearchParams();
+    if (params) {
+      Object.entries(params).forEach(([key, value]) => {
+        if (value !== undefined) {
+          searchParams.append(key, value.toString());
+        }
+      });
+    }
+
+    const response = await fetch(
+      `${API_BASE_URL}/api/follows/campaign/${campaignId}?${searchParams.toString()}`
+    );
+    return this.handleResponse(response);
+  }
+
+  static async getUserFollowedCampaigns(params?: {
+    page?: number;
+    limit?: number;
+  }): Promise<ApiResponse<{
+    followedCampaigns: Follow[];
+    pagination: {
+      page: number;
+      limit: number;
+      total: number;
+      totalPages: number;
+      hasNext: boolean;
+      hasPrev: boolean;
+    };
+  }>> {
+    const searchParams = new URLSearchParams();
+    if (params) {
+      Object.entries(params).forEach(([key, value]) => {
+        if (value !== undefined) {
+          searchParams.append(key, value.toString());
+        }
+      });
+    }
+
+    const response = await fetch(
+      `${API_BASE_URL}/api/follows/user?${searchParams.toString()}`,
+      {
+        headers: this.getAuthHeaders(),
+      }
+    );
+    return this.handleResponse(response);
+  }
+
+  static async getFollowCount(campaignId: string): Promise<ApiResponse<{
+    campaignId: string;
+    followCount: number;
+  }>> {
+    const response = await fetch(`${API_BASE_URL}/api/follows/count/${campaignId}`);
     return this.handleResponse(response);
   }
 }
