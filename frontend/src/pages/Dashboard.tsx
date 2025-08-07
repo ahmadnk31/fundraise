@@ -9,7 +9,7 @@ import { Footer } from "@/components/Footer";
 import { useAuth } from "@/hooks/useAuth";
 import { useNavigate } from "react-router-dom";
 import ApiService from "@/services/api.service";
-import { Campaign, Donation, DashboardData } from "@/types";
+import { Campaign, Donation, DashboardData, Payout, CampaignBalance } from "@/types";
 import { 
   Plus, 
   Eye, 
@@ -21,7 +21,11 @@ import {
   Users,
   Calendar,
   TrendingUp,
-  Loader2
+  Loader2,
+  Wallet,
+  CreditCard,
+  AlertCircle,
+  CheckCircle
 } from "lucide-react";
 
 interface CampaignWithStats extends Campaign {
@@ -43,6 +47,8 @@ const Dashboard = () => {
   const [userCampaigns, setUserCampaigns] = useState<CampaignWithStats[]>([]);
   const [userDonations, setUserDonations] = useState<Donation[]>([]);
   const [savedCampaigns, setSavedCampaigns] = useState<Campaign[]>([]);
+  const [userPayouts, setUserPayouts] = useState<Payout[]>([]);
+  const [campaignBalances, setCampaignBalances] = useState<Record<string, CampaignBalance>>({});
 
   useEffect(() => {
     if (!user) {
@@ -54,13 +60,15 @@ const Dashboard = () => {
       try {
         setLoading(true);
         
-        // Fetch all dashboard data in parallel
+        // Fetch core dashboard data first
+        console.log('Fetching dashboard data...');
         const [dashboardResponse, campaignsResponse, donationsResponse] = await Promise.all([
           ApiService.getDashboard(),
           ApiService.getUserCampaigns({ limit: 10 }),
           ApiService.getUserDonations({ limit: 10 })
         ]);
 
+        console.log('Core data fetched successfully');
         setDashboardData(dashboardResponse.data!);
         
         // Transform campaigns with additional stats
@@ -81,10 +89,43 @@ const Dashboard = () => {
         
         setUserCampaigns(campaignsWithStats);
         setUserDonations(donationsResponse.data.donations);
+
+        // Fetch payout data only if user has campaigns
+        if (campaignsWithStats.length > 0) {
+          console.log('Fetching payout data for', campaignsWithStats.length, 'campaigns...');
+          try {
+            const payoutsResponse = await ApiService.getUserPayouts({ limit: 10 });
+            setUserPayouts(payoutsResponse.data.payouts || []);
+            console.log('Payout data fetched successfully');
+
+            // Fetch campaign balances for each campaign
+            console.log('Fetching campaign balances...');
+            const balances: Record<string, CampaignBalance> = {};
+            for (const campaign of campaignsWithStats) {
+              try {
+                const balanceResponse = await ApiService.getCampaignBalance(campaign.id);
+                if (balanceResponse.success && balanceResponse.data) {
+                  balances[campaign.id] = balanceResponse.data;
+                }
+              } catch (error) {
+                console.warn(`Failed to fetch balance for campaign ${campaign.id}:`, error);
+              }
+            }
+            setCampaignBalances(balances);
+            console.log('Campaign balances fetched successfully');
+          } catch (error) {
+            console.warn('Failed to fetch payout data:', error);
+            // Set empty payout data instead of failing completely
+            setUserPayouts([]);
+            setCampaignBalances({});
+          }
+        } else {
+          console.log('No campaigns found, skipping payout data fetch');
+        }
         
       } catch (err) {
         console.error('Error fetching dashboard data:', err);
-        setError('Failed to load dashboard data');
+        setError(`Failed to load dashboard data: ${err instanceof Error ? err.message : 'Unknown error'}`);
       } finally {
         setLoading(false);
       }
@@ -97,13 +138,85 @@ const Dashboard = () => {
     navigate('/create-campaign');
   };
 
-  const handleViewCampaign = (campaignId: string) => {
-    navigate(`/campaign/${campaignId}`);
+  const handleViewCampaign = (campaign: CampaignWithStats) => {
+    // Use the slug if available, otherwise use the ID
+    const identifier = campaign.slug || campaign.id;
+    navigate(`/campaign/${identifier}`);
   };
 
-  const handleEditCampaign = (campaignId: string) => {
-    // TODO: Create edit campaign page
-    navigate(`/campaign/${campaignId}/edit`);
+  const handleEditCampaign = (campaign: CampaignWithStats) => {
+    const identifier = campaign.slug || campaign.id;
+    navigate(`/campaign/${identifier}/edit`);
+  };
+
+  const handleShareCampaign = (campaign: CampaignWithStats) => {
+    const identifier = campaign.slug || campaign.id;
+    const url = `${window.location.origin}/campaign/${identifier}`;
+    
+    // Try to use the Web Share API if available (mobile devices)
+    if (navigator.share) {
+      navigator.share({
+        title: campaign.title,
+        text: campaign.summary,
+        url: url,
+      }).catch(err => {
+        console.log('Error sharing:', err);
+        // Fallback to copying to clipboard
+        copyToClipboard(url, campaign.title);
+      });
+    } else {
+      // Fallback to copying to clipboard
+      copyToClipboard(url, campaign.title);
+    }
+  };
+
+  const copyToClipboard = (url: string, title: string) => {
+    navigator.clipboard.writeText(url).then(() => {
+      alert(`Campaign link copied to clipboard!\n\n"${title}"\n${url}`);
+    }).catch(err => {
+      console.error('Failed to copy to clipboard:', err);
+      // Final fallback - show the URL in an alert
+      alert(`Share this campaign:\n\n"${title}"\n${url}`);
+    });
+  };
+
+  const handleRequestPayout = async (campaignId: string) => {
+    try {
+      // For now, we'll use Stripe as default payment method
+      // In a real app, you'd show a modal to collect payment details
+      const payoutData = {
+        campaignId,
+        paymentMethod: 'stripe' as const,
+      };
+
+      const response = await ApiService.requestPayout(payoutData);
+      
+      if (response.success) {
+        // Refresh payouts and balances
+        try {
+          const payoutsResponse = await ApiService.getUserPayouts({ limit: 10 });
+          setUserPayouts(payoutsResponse.data.payouts || []);
+          
+          const balanceResponse = await ApiService.getCampaignBalance(campaignId);
+          if (balanceResponse.success && balanceResponse.data) {
+            setCampaignBalances(prev => ({
+              ...prev,
+              [campaignId]: balanceResponse.data!
+            }));
+          }
+          
+          alert('Payout request submitted successfully!');
+        } catch (refreshError) {
+          console.warn('Failed to refresh data after payout request:', refreshError);
+          alert('Payout request submitted successfully! Please refresh the page to see updates.');
+        }
+      } else {
+        alert(response.message || 'Failed to request payout');
+      }
+    } catch (error) {
+      console.error('Error requesting payout:', error);
+      alert('Failed to request payout. Please try again.');
+    }
   };
 
   const handleExploreCampaigns = () => {
@@ -232,6 +345,7 @@ const Dashboard = () => {
             <TabsList className="mb-6">
               <TabsTrigger value="campaigns">My Campaigns</TabsTrigger>
               <TabsTrigger value="donations">My Donations</TabsTrigger>
+              <TabsTrigger value="payouts">Payouts</TabsTrigger>
               <TabsTrigger value="saved">Saved Campaigns</TabsTrigger>
             </TabsList>
 
@@ -294,7 +408,7 @@ const Dashboard = () => {
                                 <Button 
                                   variant="outline" 
                                   size="sm"
-                                  onClick={() => handleViewCampaign(campaign.id)}
+                                  onClick={() => handleViewCampaign(campaign)}
                                 >
                                   <Eye className="w-4 h-4 mr-2" />
                                   View
@@ -302,15 +416,30 @@ const Dashboard = () => {
                                 <Button 
                                   variant="outline" 
                                   size="sm"
-                                  onClick={() => handleEditCampaign(campaign.id)}
+                                  onClick={() => handleEditCampaign(campaign)}
                                 >
                                   <Edit className="w-4 h-4 mr-2" />
                                   Edit
                                 </Button>
-                                <Button variant="outline" size="sm">
+                                <Button 
+                                  variant="outline" 
+                                  size="sm"
+                                  onClick={() => handleShareCampaign(campaign)}
+                                >
                                   <Share2 className="w-4 h-4 mr-2" />
                                   Share
                                 </Button>
+                                {campaignBalances[campaign.id]?.canPayout && (
+                                  <Button 
+                                    variant="default" 
+                                    size="sm"
+                                    className="bg-gradient-primary hover:opacity-90"
+                                    onClick={() => handleRequestPayout(campaign.id)}
+                                  >
+                                    <Wallet className="w-4 h-4 mr-2" />
+                                    Request Payout
+                                  </Button>
+                                )}
                               </div>
                             </div>
 
@@ -348,6 +477,32 @@ const Dashboard = () => {
                                 </span>
                               </div>
                             </div>
+
+                            {/* Balance Information */}
+                            {campaignBalances[campaign.id] && (
+                              <div className="mt-4 p-3 bg-muted/30 rounded-lg">
+                                <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm">
+                                  <div>
+                                    <span className="text-muted-foreground">Available:</span>
+                                    <span className="font-medium ml-1 text-green-600">
+                                      ${campaignBalances[campaign.id].availableBalance.toLocaleString()}
+                                    </span>
+                                  </div>
+                                  <div>
+                                    <span className="text-muted-foreground">Paid Out:</span>
+                                    <span className="font-medium ml-1">
+                                      ${campaignBalances[campaign.id].paidOut.toLocaleString()}
+                                    </span>
+                                  </div>
+                                  <div>
+                                    <span className="text-muted-foreground">Status:</span>
+                                    <span className={`font-medium ml-1 ${campaignBalances[campaign.id].canPayout ? 'text-green-600' : 'text-orange-600'}`}>
+                                      {campaignBalances[campaign.id].canPayout ? 'Ready for payout' : 'Below minimum'}
+                                    </span>
+                                  </div>
+                                </div>
+                              </div>
+                            )}
                           </div>
                         </div>
                       </CardContent>
@@ -417,6 +572,141 @@ const Dashboard = () => {
                   )}
                 </CardContent>
               </Card>
+            </TabsContent>
+
+            <TabsContent value="payouts" className="space-y-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Wallet className="w-5 h-5 text-primary" />
+                    Payout History
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {userPayouts.length === 0 ? (
+                    <div className="text-center py-12">
+                      <Wallet className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
+                      <h3 className="text-lg font-semibold mb-2">No payouts yet</h3>
+                      <p className="text-muted-foreground mb-4">
+                        Request payouts for your campaigns to see them here
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      {userPayouts.map((payout) => (
+                        <div key={payout.id} className="flex items-center justify-between p-4 border rounded-lg">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2 mb-2">
+                              <h4 className="font-medium">{payout.campaign?.title || 'Campaign'}</h4>
+                              <Badge 
+                                variant={
+                                  payout.status === 'completed' ? 'default' : 
+                                  payout.status === 'failed' ? 'destructive' : 
+                                  payout.status === 'processing' ? 'secondary' : 'outline'
+                                }
+                                className={
+                                  payout.status === 'completed' ? 'bg-green-100 text-green-800 border-green-200' :
+                                  payout.status === 'processing' ? 'bg-blue-100 text-blue-800 border-blue-200' :
+                                  undefined
+                                }
+                              >
+                                {payout.status === 'completed' && <CheckCircle className="w-3 h-3 mr-1" />}
+                                {payout.status === 'failed' && <AlertCircle className="w-3 h-3 mr-1" />}
+                                {payout.status}
+                              </Badge>
+                            </div>
+                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm text-muted-foreground">
+                              <div>
+                                <span>Requested:</span>
+                                <span className="ml-1">{new Date(payout.requestedAt).toLocaleDateString()}</span>
+                              </div>
+                              <div>
+                                <span>Method:</span>
+                                <span className="ml-1 capitalize">{payout.paymentMethod.replace('_', ' ')}</span>
+                              </div>
+                              <div>
+                                <span>Platform Fee:</span>
+                                <span className="ml-1">${parseFloat(payout.platformFee).toLocaleString()}</span>
+                              </div>
+                              <div>
+                                <span>Processing Fee:</span>
+                                <span className="ml-1">${parseFloat(payout.processingFee).toLocaleString()}</span>
+                              </div>
+                            </div>
+                            {payout.failureReason && (
+                              <div className="mt-2 p-2 bg-red-50 border border-red-200 rounded text-sm text-red-700">
+                                <strong>Failure reason:</strong> {payout.failureReason}
+                              </div>
+                            )}
+                          </div>
+                          <div className="text-right ml-4">
+                            <div className="text-lg font-semibold text-primary">
+                              ${parseFloat(payout.netAmount).toLocaleString()}
+                            </div>
+                            <div className="text-sm text-muted-foreground">
+                              of ${parseFloat(payout.amount).toLocaleString()}
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* Campaign Balances Summary */}
+              {Object.keys(campaignBalances).length > 0 && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <CreditCard className="w-5 h-5 text-primary" />
+                      Campaign Balances
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-4">
+                      {userCampaigns.map((campaign) => {
+                        const balance = campaignBalances[campaign.id];
+                        if (!balance) return null;
+                        
+                        return (
+                          <div key={campaign.id} className="flex items-center justify-between p-4 border rounded-lg">
+                            <div>
+                              <h4 className="font-medium">{campaign.title}</h4>
+                              <p className="text-sm text-muted-foreground">
+                                Total raised: ${balance.totalRaised.toLocaleString()} • 
+                                Paid out: ${balance.paidOut.toLocaleString()}
+                              </p>
+                            </div>
+                            <div className="text-right">
+                              <div className="text-lg font-semibold text-green-600">
+                                ${balance.availableBalance.toLocaleString()}
+                              </div>
+                              <div className="text-sm text-muted-foreground">
+                                Available
+                              </div>
+                              {balance.canPayout ? (
+                                <Button 
+                                  size="sm" 
+                                  className="mt-2 bg-gradient-primary hover:opacity-90"
+                                  onClick={() => handleRequestPayout(campaign.id)}
+                                >
+                                  <Wallet className="w-3 h-3 mr-1" />
+                                  Request Payout
+                                </Button>
+                              ) : (
+                                <div className="text-xs text-orange-600 mt-1">
+                                  Min: ${balance.minimumPayoutAmount}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
             </TabsContent>
 
             <TabsContent value="saved" className="space-y-6">

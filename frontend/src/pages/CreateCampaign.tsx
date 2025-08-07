@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useParams, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -10,6 +11,7 @@ import { Footer } from "@/components/Footer";
 import { Progress } from "@/components/ui/progress";
 import FileUpload from "@/components/FileUpload";
 import ApiService from "@/services/api.service";
+import { Campaign } from "@/types";
 import { 
   Upload, 
   DollarSign, 
@@ -17,13 +19,21 @@ import {
   Target, 
   FileText, 
   Camera,
-  CheckCircle
+  CheckCircle,
+  Loader2
 } from "lucide-react";
 
 const CreateCampaign = () => {
+  const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
+  const isEditMode = !!id;
+  
   const [currentStep, setCurrentStep] = useState(1);
   const totalSteps = 4;
   const progress = (currentStep / totalSteps) * 100;
+  
+  const [loading, setLoading] = useState(isEditMode);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   // Form data state
   const [formData, setFormData] = useState({
@@ -42,6 +52,65 @@ const CreateCampaign = () => {
   const [uploadedFiles, setUploadedFiles] = useState<any[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Load campaign data for editing
+  useEffect(() => {
+    if (isEditMode && id) {
+      loadCampaignForEdit(id);
+    }
+  }, [isEditMode, id]);
+
+  const loadCampaignForEdit = async (campaignId: string) => {
+    try {
+      setLoading(true);
+      setLoadError(null);
+      
+      const response = await ApiService.getCampaign(campaignId);
+      
+      if (response.success && response.data) {
+        const campaign = response.data.campaign;
+        
+        // Pre-fill form with existing campaign data
+        setFormData({
+          title: campaign.title || '',
+          category: campaign.category || '',
+          location: campaign.location || '',
+          summary: campaign.summary || '',
+          story: campaign.story || '',
+          goalAmount: campaign.goalAmount || '',
+          deadline: campaign.deadline ? new Date(campaign.deadline).toISOString().split('T')[0] : '',
+          budgetBreakdown: campaign.budgetBreakdown || '',
+          coverImage: campaign.coverImage || '',
+          additionalMedia: campaign.additionalMedia || [],
+        });
+        
+        // Set uploaded files state if there are existing images
+        if (campaign.coverImage || campaign.additionalMedia?.length) {
+          const existingFiles = [];
+          if (campaign.coverImage) {
+            existingFiles.push({
+              publicUrl: campaign.coverImage,
+              uploadStatus: 'success'
+            });
+          }
+          campaign.additionalMedia?.forEach((url: string) => {
+            existingFiles.push({
+              publicUrl: url,
+              uploadStatus: 'success'
+            });
+          });
+          setUploadedFiles(existingFiles);
+        }
+      } else {
+        setLoadError('Failed to load campaign data');
+      }
+    } catch (err) {
+      console.error('Error loading campaign:', err);
+      setLoadError('Failed to load campaign data');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleInputChange = (field: string, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -123,30 +192,60 @@ const CreateCampaign = () => {
         return;
       }
 
-      const result = await ApiService.createCampaign({
-        title: formData.title,
-        summary: formData.summary,
-        story: formData.story,
-        category: formData.category,
-        location: formData.location,
-        goalAmount: formData.goalAmount,
-        deadline: formData.deadline || undefined,
-        budgetBreakdown: formData.budgetBreakdown,
-        coverImage: formData.coverImage,
-        additionalMedia: formData.additionalMedia,
-      });
+      let result;
+      
+      if (isEditMode && id) {
+        // Update existing campaign
+        result = await ApiService.updateCampaign(id, {
+          title: formData.title,
+          summary: formData.summary,
+          story: formData.story,
+          category: formData.category,
+          location: formData.location,
+          goalAmount: formData.goalAmount,
+          deadline: formData.deadline || undefined,
+          budgetBreakdown: formData.budgetBreakdown,
+          coverImage: formData.coverImage,
+          additionalMedia: formData.additionalMedia,
+        });
+      } else {
+        // Create new campaign
+        result = await ApiService.createCampaign({
+          title: formData.title,
+          summary: formData.summary,
+          story: formData.story,
+          category: formData.category,
+          location: formData.location,
+          goalAmount: formData.goalAmount,
+          deadline: formData.deadline || undefined,
+          budgetBreakdown: formData.budgetBreakdown,
+          coverImage: formData.coverImage,
+          additionalMedia: formData.additionalMedia,
+        });
+      }
 
       if (result.success) {
         // Redirect to dashboard or campaign page
-        alert('Campaign created successfully! It will be reviewed before going live.');
+        const successMessage = isEditMode 
+          ? 'Campaign updated successfully!' 
+          : 'Campaign created successfully! It will be reviewed before going live.';
+        alert(successMessage);
+        
+        if (isEditMode) {
+          // Redirect to the updated campaign
+          navigate(`/campaign/${id}`);
+        } else {
+          // Redirect to dashboard for new campaigns
+          navigate('/dashboard');
+        }
         // You can redirect here using react-router-dom
         // navigate('/dashboard');
       } else {
-        throw new Error(result.message || 'Failed to create campaign');
+        throw new Error(result.message || (isEditMode ? 'Failed to update campaign' : 'Failed to create campaign'));
       }
     } catch (error) {
       console.error('Campaign submission error:', error);
-      setError(error instanceof Error ? error.message : 'Failed to create campaign');
+      setError(error instanceof Error ? error.message : (isEditMode ? 'Failed to update campaign' : 'Failed to create campaign'));
     } finally {
       setIsSubmitting(false);
     }
@@ -169,26 +268,53 @@ const CreateCampaign = () => {
     <div className="min-h-screen bg-background">
       <Navigation />
       
-      <div className="container mx-auto px-4 py-8">
-        <div className="max-w-4xl mx-auto">
-          {/* Header */}
-          <div className="text-center mb-8">
-            <h1 className="text-3xl md:text-4xl font-bold mb-4">
-              Start Your Campaign
-            </h1>
-            <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-              Turn your cause into action. Create a campaign that inspires people to support your mission.
-            </p>
+      {/* Loading state for edit mode */}
+      {loading && (
+        <div className="container mx-auto px-4 py-8">
+          <div className="max-w-4xl mx-auto text-center">
+            <Loader2 className="w-8 h-8 animate-spin mx-auto mb-4" />
+            <p className="text-muted-foreground">Loading campaign data...</p>
           </div>
+        </div>
+      )}
 
-          {/* Progress Bar */}
-          <Card className="mb-8">
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between mb-4">
-                <span className="text-sm font-medium">Step {currentStep} of {totalSteps}</span>
-                <span className="text-sm text-muted-foreground">{Math.round(progress)}% Complete</span>
-              </div>
-              <Progress value={progress} className="h-2" />
+      {/* Error state for edit mode */}
+      {loadError && (
+        <div className="container mx-auto px-4 py-8">
+          <div className="max-w-4xl mx-auto text-center">
+            <p className="text-red-500 mb-4">{loadError}</p>
+            <Button onClick={() => navigate('/dashboard')}>
+              Return to Dashboard
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {/* Main content */}
+      {!loading && !loadError && (
+        <div className="container mx-auto px-4 py-8">
+          <div className="max-w-4xl mx-auto">
+            {/* Header */}
+            <div className="text-center mb-8">
+              <h1 className="text-3xl md:text-4xl font-bold mb-4">
+                {isEditMode ? 'Edit Your Campaign' : 'Start Your Campaign'}
+              </h1>
+              <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
+                {isEditMode 
+                  ? 'Update your campaign details to keep your supporters informed.'
+                  : 'Turn your cause into action. Create a campaign that inspires people to support your mission.'
+                }
+              </p>
+            </div>
+
+            {/* Progress Bar */}
+            <Card className="mb-8">
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <span className="text-sm font-medium">Step {currentStep} of {totalSteps}</span>
+                  <span className="text-sm text-muted-foreground">{Math.round(progress)}% Complete</span>
+                </div>
+                <Progress value={progress} className="h-2" />
               
               <div className="flex justify-between mt-4 text-sm">
                 <span className={currentStep >= 1 ? "text-primary font-medium" : "text-muted-foreground"}>
@@ -501,14 +627,15 @@ const CreateCampaign = () => {
                     disabled={isSubmitting}
                     className="bg-gradient-primary hover:opacity-90"
                   >
-                    {isSubmitting ? 'Creating Campaign...' : 'Launch Campaign'}
+                    {isSubmitting ? (isEditMode ? 'Updating Campaign...' : 'Creating Campaign...') : (isEditMode ? 'Update Campaign' : 'Launch Campaign')}
                   </Button>
                 )}
               </div>
             </CardContent>
           </Card>
+          </div>
         </div>
-      </div>
+      )}
 
       <Footer />
     </div>

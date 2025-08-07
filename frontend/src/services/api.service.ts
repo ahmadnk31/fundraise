@@ -20,7 +20,12 @@ import {
   UpdateCommentRequest,
   Follow,
   FollowCampaignRequest,
-  FollowStatus
+  FollowStatus,
+  Payout,
+  CreatePayoutRequest,
+  CampaignBalance,
+  CampaignFinancials,
+  PlatformSettings
 } from '@/types';
 // Base API configuration
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
@@ -576,6 +581,68 @@ class ApiService {
     followCount: number;
   }>> {
     const response = await fetch(`${API_BASE_URL}/api/follows/count/${campaignId}`);
+    return this.handleResponse(response);
+  }
+
+  // Payout API methods
+  static async getCampaignBalance(campaignId: string): Promise<ApiResponse<CampaignBalance>> {
+    const response = await fetch(`${API_BASE_URL}/api/payouts/campaign/${campaignId}/balance`, {
+      headers: this.getAuthHeaders(),
+    });
+    return this.handleResponse(response);
+  }
+
+  static async requestPayout(data: CreatePayoutRequest): Promise<ApiResponse<Payout>> {
+    const response = await fetch(`${API_BASE_URL}/api/payouts/request`, {
+      method: 'POST',
+      headers: this.getAuthHeaders(),
+      body: JSON.stringify(data),
+    });
+    return this.handleResponse(response);
+  }
+
+  static async getUserPayouts(params?: {
+    page?: number;
+    limit?: number;
+    status?: string;
+  }): Promise<ApiResponse<{
+    payouts: Payout[];
+    pagination: {
+      page: number;
+      limit: number;
+      total: number;
+      totalPages: number;
+      hasNext: boolean;
+      hasPrev: boolean;
+    };
+  }>> {
+    const searchParams = new URLSearchParams();
+    if (params) {
+      Object.entries(params).forEach(([key, value]) => {
+        if (value !== undefined) {
+          searchParams.append(key, value.toString());
+        }
+      });
+    }
+
+    const response = await fetch(
+      `${API_BASE_URL}/api/payouts/history?${searchParams.toString()}`,
+      {
+        headers: this.getAuthHeaders(),
+      }
+    );
+    return this.handleResponse(response);
+  }
+
+  static async getCampaignFinancials(campaignId: string): Promise<ApiResponse<CampaignFinancials>> {
+    const response = await fetch(`${API_BASE_URL}/api/payouts/campaign/${campaignId}/financials`, {
+      headers: this.getAuthHeaders(),
+    });
+    return this.handleResponse(response);
+  }
+
+  static async getPlatformSettings(): Promise<ApiResponse<PlatformSettings>> {
+    const response = await fetch(`${API_BASE_URL}/api/payouts/settings`);
     return this.handleResponse(response);
   }
 }

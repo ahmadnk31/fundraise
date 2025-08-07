@@ -4,6 +4,7 @@ import { donations, campaigns } from '../db/schema.js';
 import { eq } from 'drizzle-orm';
 import { z } from 'zod';
 import { stripeService } from '../services/stripe.service.js';
+import { payoutService } from '../services/payout.service.js';
 const router = Router();
 // Create payment intent
 router.post('/create-payment-intent', async (req, res) => {
@@ -161,6 +162,16 @@ router.post('/', async (req, res) => {
             paymentIntentId: validatedData.paymentIntentId,
         }).returning();
         console.log('Donation created successfully:', donation.id);
+        // Process donation for payout system (calculate fees and update available balance)
+        try {
+            console.log('Processing donation for payout system...');
+            await payoutService.processDonation(donation.id);
+            console.log('Payout processing completed successfully');
+        }
+        catch (payoutError) {
+            console.error('Error processing donation for payouts:', payoutError);
+            // Continue with donation processing even if payout processing fails
+        }
         // Update campaign's current amount
         const currentAmount = parseFloat(campaign.currentAmount);
         const newAmount = currentAmount + validatedData.amount;
