@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Heart, Share2, TrendingUp } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useState } from "react";
+import { FollowButton } from "./FollowButton";
 
 interface CampaignCardProps {
   title: string;
@@ -32,7 +33,6 @@ export function CampaignCard({
   id
 }: CampaignCardProps) {
   const navigate = useNavigate();
-  const [isLiked, setIsLiked] = useState(false);
   
   const progress = (raised / goal) * 100;
   const isNearGoal = progress >= 80;
@@ -47,12 +47,6 @@ export function CampaignCard({
   const handleDonate = (e: React.MouseEvent) => {
     e.stopPropagation();
     navigate(`/campaign/${campaignId}?donate=true`);
-  };
-
-  const handleLike = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    setIsLiked(!isLiked);
-    // TODO: Add API call to like/unlike campaign
   };
 
   const handleShare = (e: React.MouseEvent) => {
@@ -132,17 +126,20 @@ export function CampaignCard({
           >
             Donate Now
           </Button>
-          <Button 
-            variant="outline" 
-            size="sm"
-            onClick={handleLike}
-            className={isLiked ? "text-red-500" : ""}
+          <div 
+            onClick={(e) => e.stopPropagation()}
           >
-            <Heart className={`w-4 h-4 ${isLiked ? "fill-current" : ""}`} />
-          </Button>
+            <FollowButton
+              campaignId={campaignId}
+              compact={true}
+              onFollowChange={(isFollowing, count) => {
+                console.log(`Campaign ${campaignId} follow status: ${isFollowing}, followers: ${count}`);
+              }}
+            />
+          </div>
           <Button 
             variant="outline" 
-            size="sm"
+            
             onClick={handleShare}
           >
             <Share2 className="w-4 h-4" />

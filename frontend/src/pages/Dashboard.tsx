@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -38,7 +39,9 @@ interface CampaignWithStats extends Campaign {
 const Dashboard = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState("campaigns");
+  const [searchParams] = useSearchParams();
+  const tabFromUrl = searchParams.get('tab');
+  const [activeTab, setActiveTab] = useState(tabFromUrl || "campaigns");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   
@@ -49,6 +52,12 @@ const Dashboard = () => {
   const [savedCampaigns, setSavedCampaigns] = useState<Campaign[]>([]);
   const [userPayouts, setUserPayouts] = useState<Payout[]>([]);
   const [campaignBalances, setCampaignBalances] = useState<Record<string, CampaignBalance>>({});
+
+  useEffect(() => {
+    if (tabFromUrl && ["campaigns", "donations", "payouts", "saved"].includes(tabFromUrl)) {
+      setActiveTab(tabFromUrl);
+    }
+  }, [tabFromUrl]);
 
   useEffect(() => {
     if (!user) {
@@ -121,6 +130,20 @@ const Dashboard = () => {
           }
         } else {
           console.log('No campaigns found, skipping payout data fetch');
+        }
+
+        // Fetch followed campaigns
+        try {
+          console.log('Fetching followed campaigns...');
+          const followedResponse = await ApiService.getUserFollowedCampaigns({ limit: 10 });
+          if (followedResponse.success && followedResponse.data?.followedCampaigns) {
+            const followedCampaigns = followedResponse.data.followedCampaigns.map((follow: any) => follow.campaign).filter(Boolean);
+            setSavedCampaigns(followedCampaigns);
+            console.log('Followed campaigns fetched successfully:', followedCampaigns.length);
+          }
+        } catch (error) {
+          console.warn('Failed to fetch followed campaigns:', error);
+          setSavedCampaigns([]);
         }
         
       } catch (err) {
@@ -718,19 +741,112 @@ const Dashboard = () => {
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="text-center py-12">
-                    <Heart className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
-                    <h3 className="text-lg font-semibold mb-2">No saved campaigns yet</h3>
-                    <p className="text-muted-foreground mb-4">
-                      Start exploring campaigns and save the ones you care about
-                    </p>
-                    <Button 
-                      className="bg-gradient-primary hover:opacity-90"
-                      onClick={handleExploreCampaigns}
-                    >
-                      Explore Campaigns
-                    </Button>
-                  </div>
+                  {savedCampaigns.length === 0 ? (
+                    <div className="text-center py-12">
+                      <Heart className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
+                      <h3 className="text-lg font-semibold mb-2">No saved campaigns yet</h3>
+                      <p className="text-muted-foreground mb-4">
+                        Start exploring campaigns and save the ones you care about
+                      </p>
+                      <Button 
+                        className="bg-gradient-primary hover:opacity-90"
+                        onClick={handleExploreCampaigns}
+                      >
+                        Explore Campaigns
+                      </Button>
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      {savedCampaigns.map((campaign) => {
+                        const progress = (parseFloat(campaign.currentAmount) / parseFloat(campaign.goalAmount)) * 100;
+                        
+                        return (
+                          <Card key={campaign.id} className="overflow-hidden">
+                            <CardContent className="p-6">
+                              <div className="flex flex-col lg:flex-row gap-6">
+                                {/* Campaign Image */}
+                                <div className="w-full lg:w-48 h-32 bg-gradient-to-r from-primary/20 to-primary-glow/20 rounded-lg flex items-center justify-center overflow-hidden">
+                                  {campaign.coverImage ? (
+                                    <img 
+                                      src={campaign.coverImage} 
+                                      alt={campaign.title}
+                                      className="w-full h-full object-cover"
+                                    />
+                                  ) : (
+                                    <div className="text-4xl opacity-30">🎯</div>
+                                  )}
+                                </div>
+
+                                {/* Campaign Details */}
+                                <div className="flex-1 space-y-4">
+                                  <div className="flex flex-col md:flex-row justify-between items-start">
+                                    <div>
+                                      <h3 className="text-xl font-semibold mb-2">{campaign.title}</h3>
+                                      <p className="text-muted-foreground line-clamp-2">{campaign.summary}</p>
+                                      <div className="flex gap-2 mt-2">
+                                        <Badge variant={campaign.isActive ? 'default' : 'secondary'}>
+                                          {campaign.isActive ? 'Active' : 'Inactive'}
+                                        </Badge>
+                                        <Badge variant="outline">{campaign.category}</Badge>
+                                      </div>
+                                    </div>
+                                    
+                                    <div className="flex gap-2 mt-4 md:mt-0">
+                                      <Button 
+                                        variant="outline" 
+                                        size="sm"
+                                        onClick={() => handleViewCampaign(campaign)}
+                                      >
+                                        <Eye className="w-4 h-4 mr-2" />
+                                        View
+                                      </Button>
+                                      <Button 
+                                        variant="outline" 
+                                        size="sm"
+                                        onClick={() => handleShareCampaign(campaign)}
+                                      >
+                                        <Share2 className="w-4 h-4 mr-2" />
+                                        Share
+                                      </Button>
+                                    </div>
+                                  </div>
+
+                                  {/* Progress */}
+                                  <div className="space-y-2">
+                                    <div className="flex justify-between text-sm">
+                                      <span className="font-medium text-primary">
+                                        ${parseFloat(campaign.currentAmount).toLocaleString()} raised
+                                      </span>
+                                      <span className="text-muted-foreground">
+                                        of ${parseFloat(campaign.goalAmount).toLocaleString()}
+                                      </span>
+                                    </div>
+                                    <Progress value={progress} className="h-2" />
+                                  </div>
+
+                                  {/* Stats */}
+                                  <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm">
+                                    <div>
+                                      <span className="text-muted-foreground">Progress:</span>
+                                      <span className="font-medium ml-1">{progress.toFixed(1)}%</span>
+                                    </div>
+                                    <div>
+                                      <span className="text-muted-foreground">Creator:</span>
+                                      <span className="font-medium ml-1">{campaign.user.firstName} {campaign.user.lastName}</span>
+                                    </div>
+                                    <div>
+                                      <span className="text-muted-foreground">Location:</span>
+                                      <span className="font-medium ml-1">{campaign.location || 'Not specified'}</span>
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+                            </CardContent>
+                          </Card>
+                        );
+                      })}
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             </TabsContent>
