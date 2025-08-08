@@ -20,7 +20,13 @@ import {
   UpdateCommentRequest,
   Follow,
   FollowCampaignRequest,
-  FollowStatus
+  FollowStatus,
+  Payout,
+  CreatePayoutRequest,
+  CampaignBalance,
+  CampaignFinancials,
+  PlatformSettings,
+  StripeConnectStatus
 } from '@/types';
 // Base API configuration
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
@@ -576,6 +582,161 @@ class ApiService {
     followCount: number;
   }>> {
     const response = await fetch(`${API_BASE_URL}/api/follows/count/${campaignId}`);
+    return this.handleResponse(response);
+  }
+
+  // Payout API methods
+  static async getCampaignBalance(campaignId: string): Promise<ApiResponse<CampaignBalance>> {
+    const response = await fetch(`${API_BASE_URL}/api/payouts/campaign/${campaignId}/balance`, {
+      headers: this.getAuthHeaders(),
+    });
+    return this.handleResponse(response);
+  }
+
+  static async requestPayout(data: CreatePayoutRequest): Promise<ApiResponse<Payout>> {
+    const response = await fetch(`${API_BASE_URL}/api/payouts/request`, {
+      method: 'POST',
+      headers: this.getAuthHeaders(),
+      body: JSON.stringify(data),
+    });
+    return this.handleResponse(response);
+  }
+
+  static async getUserPayouts(params?: {
+    page?: number;
+    limit?: number;
+    status?: string;
+  }): Promise<ApiResponse<{
+    payouts: Payout[];
+    pagination: {
+      page: number;
+      limit: number;
+      total: number;
+      totalPages: number;
+      hasNext: boolean;
+      hasPrev: boolean;
+    };
+  }>> {
+    const searchParams = new URLSearchParams();
+    if (params) {
+      Object.entries(params).forEach(([key, value]) => {
+        if (value !== undefined) {
+          searchParams.append(key, value.toString());
+        }
+      });
+    }
+
+    const response = await fetch(
+      `${API_BASE_URL}/api/payouts/history?${searchParams.toString()}`,
+      {
+        headers: this.getAuthHeaders(),
+      }
+    );
+    return this.handleResponse(response);
+  }
+
+  static async getCampaignFinancials(campaignId: string): Promise<ApiResponse<CampaignFinancials>> {
+    const response = await fetch(`${API_BASE_URL}/api/payouts/campaign/${campaignId}/financials`, {
+      headers: this.getAuthHeaders(),
+    });
+    return this.handleResponse(response);
+  }
+
+  static async getPlatformSettings(): Promise<ApiResponse<PlatformSettings>> {
+    const response = await fetch(`${API_BASE_URL}/api/payouts/settings`);
+    return this.handleResponse(response);
+  }
+
+  // Report functionality
+  static async reportCampaign(data: {
+    campaignId: string;
+    reason: 'spam' | 'inappropriate' | 'fraud' | 'offensive' | 'copyright' | 'other';
+    description: string;
+  }): Promise<ApiResponse<{ reportId: string }>> {
+    const response = await fetch(`${API_BASE_URL}/api/reports`, {
+      method: 'POST',
+      headers: this.getAuthHeaders(),
+      body: JSON.stringify(data),
+    });
+    return this.handleResponse(response);
+  }
+
+  // Stripe Connect
+  static async createStripeConnectOnboarding(campaignId: string): Promise<ApiResponse<{ url: string; accountId: string }>> {
+    const response = await fetch(`${API_BASE_URL}/api/stripe-connect/connect/onboard`, {
+      method: 'POST',
+      headers: this.getAuthHeaders(),
+      body: JSON.stringify({ campaignId }),
+    });
+    return this.handleResponse(response);
+  }
+
+  static async getStripeConnectStatus(campaignId: string): Promise<ApiResponse<StripeConnectStatus>> {
+    const response = await fetch(`${API_BASE_URL}/api/stripe-connect/connect/status/${campaignId}`, {
+      headers: this.getAuthHeaders(),
+    });
+    return this.handleResponse(response);
+  }
+
+  static async createStripeConnectLogin(campaignId: string): Promise<ApiResponse<{ url: string }>> {
+    const response = await fetch(`${API_BASE_URL}/api/stripe-connect/connect/login`, {
+      method: 'POST',
+      headers: this.getAuthHeaders(),
+      body: JSON.stringify({ campaignId }),
+    });
+    return this.handleResponse(response);
+  }
+
+  // Manual Payouts
+  static async getManualPayoutInstructions(): Promise<ApiResponse<any>> {
+    const response = await fetch(`${API_BASE_URL}/api/manual-payouts/manual/instructions`, {
+      headers: this.getAuthHeaders(),
+    });
+    return this.handleResponse(response);
+  }
+
+  static async createManualPayout(data: {
+    campaignId: string;
+    amount: string;
+    paymentMethod: 'bank_transfer' | 'paypal' | 'check';
+    accountDetails: {
+      accountHolder: string;
+      bankName?: string;
+      accountNumber?: string;
+      routingNumber?: string;
+      paypalEmail?: string;
+      address?: string;
+    };
+  }): Promise<ApiResponse<any>> {
+    const response = await fetch(`${API_BASE_URL}/api/manual-payouts/manual`, {
+      method: 'POST',
+      headers: this.getAuthHeaders(),
+      body: JSON.stringify(data),
+    });
+    return this.handleResponse(response);
+  }
+
+  // Admin Payout Management
+  static async getPendingPayouts(): Promise<ApiResponse<any[]>> {
+    const response = await fetch(`${API_BASE_URL}/api/admin/payouts/pending`, {
+      headers: this.getAuthHeaders(),
+    });
+    return this.handleResponse(response);
+  }
+
+  static async processAdminPayout(payoutId: string, data: {
+    action: 'approve' | 'reject' | 'process_stripe';
+    rejectionReason?: string;
+    stripeTransferData?: {
+      destinationAccount?: string;
+      transferAmount?: number;
+    };
+  }): Promise<ApiResponse<any>> {
+    const response = await fetch(`${API_BASE_URL}/api/admin/payouts/process/${payoutId}`, {
+      method: 'PUT',
+      headers: this.getAuthHeaders(),
+      body: JSON.stringify(data),
+    });
     return this.handleResponse(response);
   }
 }

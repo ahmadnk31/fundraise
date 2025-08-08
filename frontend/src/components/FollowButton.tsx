@@ -9,9 +9,10 @@ import { FollowStatus } from '../types';
 interface FollowButtonProps {
   campaignId: string;
   onFollowChange?: (isFollowing: boolean, followCount: number) => void;
+  compact?: boolean; // New prop for compact display
 }
 
-export const FollowButton: React.FC<FollowButtonProps> = ({ campaignId, onFollowChange }) => {
+export const FollowButton: React.FC<FollowButtonProps> = ({ campaignId, onFollowChange, compact = false }) => {
   const { isAuthenticated } = useAuth();
   const { toast } = useToast();
   const [followStatus, setFollowStatus] = useState<FollowStatus>({ isFollowing: false });
@@ -116,9 +117,35 @@ export const FollowButton: React.FC<FollowButtonProps> = ({ campaignId, onFollow
 
   if (initialLoading) {
     return (
-      <Button variant="outline" disabled className="flex-1">
-        <Loader2 className="w-4 h-4 animate-spin mr-2" />
-        Loading...
+      <Button 
+        variant="outline" 
+        disabled 
+        className={compact ? "h-10 w-10 p-0" : "flex-1"}
+        size={compact ? "sm" : "default"}
+      >
+        <Loader2 className={`w-4 h-4 animate-spin ${!compact ? 'mr-2' : ''}`} />
+        {!compact && 'Loading...'}
+      </Button>
+    );
+  }
+
+  if (compact) {
+    return (
+      <Button
+        variant={followStatus.isFollowing ? "default" : "outline"}
+        onClick={handleFollow}
+        disabled={loading}
+        className="h-10 w-10 p-0"
+        size="sm"
+        title={followStatus.isFollowing ? 'Unfollow' : 'Follow'}
+      >
+        {loading ? (
+          <Loader2 className="w-4 h-4 animate-spin" />
+        ) : followStatus.isFollowing ? (
+          <Heart className="w-4 h-4 fill-current text-red-500" />
+        ) : (
+          <Heart className="w-4 h-4" />
+        )}
       </Button>
     );
   }

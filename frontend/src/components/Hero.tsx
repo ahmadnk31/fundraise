@@ -31,7 +31,7 @@ export function Hero() {
     const formData = new FormData(e.currentTarget);
     const query = formData.get('search') as string;
     if (query.trim()) {
-      navigate(`/search?q=${encodeURIComponent(query.trim())}`);
+      navigate(`/campaigns?search=${encodeURIComponent(query.trim())}`);
     }
   };
 

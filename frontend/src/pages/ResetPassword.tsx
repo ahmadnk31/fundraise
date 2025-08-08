@@ -5,7 +5,7 @@ import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { Alert, AlertDescription } from '../components/ui/alert';
-import { Eye, EyeOff, Loader2, CheckCircle } from 'lucide-react';
+import { Eye, EyeOff, Loader2, CheckCircle, ArrowLeft } from 'lucide-react';
 import apiService from '../services/api.service';
 
 export const ResetPassword: React.FC = () => {
@@ -109,9 +109,10 @@ export const ResetPassword: React.FC = () => {
                 Request new reset link
               </Button>
             </Link>
-            <Link to="/login">
+            <Link to="/">
               <Button variant="outline" className="w-full">
-                Back to login
+                <ArrowLeft className="mr-2 h-4 w-4" />
+                Back to home
               </Button>
             </Link>
           </div>
@@ -140,12 +141,20 @@ export const ResetPassword: React.FC = () => {
               You can now sign in with your new password. You'll be redirected to the login page shortly.
             </p>
           </div>
-          <Button
-            onClick={() => navigate('/login')}
-            className="w-full"
-          >
-            Go to Login
-          </Button>
+          <div className="space-y-3">
+            <Button
+              onClick={() => navigate('/login')}
+              className="w-full"
+            >
+              Go to Login
+            </Button>
+            <Link to="/">
+              <Button variant="outline" className="w-full">
+                <ArrowLeft className="mr-2 h-4 w-4" />
+                Back to home
+              </Button>
+            </Link>
+          </div>
         </div>
       </AuthLayout>
     );
@@ -158,6 +167,17 @@ export const ResetPassword: React.FC = () => {
       image="https://images.unsplash.com/photo-1553484771-371a605b060b?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1740&q=80"
       imageAlt="Password reset"
     >
+      {/* Back Button */}
+      <div className="mb-6">
+        <Link
+          to="/"
+          className="inline-flex items-center text-sm font-medium text-blue-600 hover:text-blue-500 transition-colors"
+        >
+          <ArrowLeft className="mr-2 h-4 w-4" />
+          Back to home
+        </Link>
+      </div>
+
       <form onSubmit={handleSubmit} className="space-y-6">
         {error && (
           <Alert variant="destructive">
@@ -239,10 +259,11 @@ export const ResetPassword: React.FC = () => {
 
         <div className="text-center">
           <Link
-            to="/login"
-            className="text-sm font-medium text-blue-600 hover:text-blue-500"
+            to="/"
+            className="inline-flex items-center text-sm font-medium text-blue-600 hover:text-blue-500"
           >
-            Back to login
+            <ArrowLeft className="mr-2 h-4 w-4" />
+            Back to home
           </Link>
         </div>
       </form>

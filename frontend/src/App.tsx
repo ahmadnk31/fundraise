@@ -48,6 +48,11 @@ const App = () => (
                 <CreateCampaign />
               </ProtectedRoute>
             } />
+            <Route path="/campaign/:id/edit" element={
+              <ProtectedRoute>
+                <CreateCampaign />
+              </ProtectedRoute>
+            } />
             <Route path="/dashboard" element={
               <ProtectedRoute>
                 <Dashboard />

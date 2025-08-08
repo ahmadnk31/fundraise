@@ -117,7 +117,13 @@ export function Navigation() {
                   </Button>
                 </Link>
                 
-                <Button variant="ghost" size="sm" className="hidden lg:flex px-2">
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  className="hidden lg:flex px-2"
+                  onClick={() => navigate('/dashboard?tab=saved')}
+                  title="Saved Campaigns"
+                >
                   <Heart className="w-4 h-4" />
                 </Button>
                 

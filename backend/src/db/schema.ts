@@ -272,6 +272,18 @@ export const payoutsRelations = relations(payouts, ({ one, many }) => ({
   transactions: many(transactions),
 }));
 
+export const reports = pgTable('reports', {
+  id: uuid('id').primaryKey().default(sql`gen_random_uuid()`),
+  campaignId: uuid('campaign_id').references(() => campaigns.id, { onDelete: 'cascade' }).notNull(),
+  reporterId: uuid('reporter_id').references(() => users.id, { onDelete: 'set null' }),
+  reason: text('reason').notNull(), // spam, inappropriate, fraud, other
+  description: text('description').notNull(),
+  status: text('status').default('pending').notNull(), // pending, reviewed, resolved, dismissed
+  adminNotes: text('admin_notes'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
 export const transactionsRelations = relations(transactions, ({ one }) => ({
   campaign: one(campaigns, {
     fields: [transactions.campaignId],
@@ -284,5 +296,16 @@ export const transactionsRelations = relations(transactions, ({ one }) => ({
   payout: one(payouts, {
     fields: [transactions.payoutId],
     references: [payouts.id],
+  }),
+}));
+
+export const reportsRelations = relations(reports, ({ one }) => ({
+  campaign: one(campaigns, {
+    fields: [reports.campaignId],
+    references: [campaigns.id],
+  }),
+  reporter: one(users, {
+    fields: [reports.reporterId],
+    references: [users.id],
   }),
 }));

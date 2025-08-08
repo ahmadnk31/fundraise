@@ -1,25 +1,12 @@
+
 import { Router } from 'express';
-import { z } from 'zod';
 import { authMiddleware } from '../middleware/auth.middleware.js';
 import { payoutService } from '../services/payout.service.js';
 import { db } from '../db/index.js';
-import { campaigns } from '../db/schema.js';
+import { campaigns, donations } from '../db/schema.js';
 import { eq, and } from 'drizzle-orm';
 
 const router = Router();
-
-// Validation schemas
-const payoutRequestSchema = z.object({
-  campaignId: z.string().uuid(),
-  paymentMethod: z.enum(['stripe', 'paypal', 'bank_transfer']),
-  paymentDetails: z.object({
-    email: z.string().email().optional(),
-    accountNumber: z.string().optional(),
-    routingNumber: z.string().optional(),
-    bankName: z.string().optional(),
-    accountType: z.enum(['checking', 'savings']).optional(),
-  }).optional(),
-});
 
 // Get campaign financial overview
 router.get('/campaign/:campaignId/financials', authMiddleware, async (req, res) => {
@@ -87,38 +74,31 @@ router.get('/campaign/:campaignId/balance', authMiddleware, async (req, res) => 
   }
 });
 
-// Request payout
+// Request a payout (automatic via Stripe Connect)
 router.post('/request', authMiddleware, async (req, res) => {
   try {
-    const validatedData = payoutRequestSchema.parse(req.body);
+    const { campaignId } = req.body;
     const userId = req.user!.id;
 
-    const payout = await payoutService.requestPayout(
-      validatedData.campaignId,
-      userId,
-      validatedData.paymentMethod,
-      validatedData.paymentDetails
-    );
-
-    res.status(201).json({
-      success: true,
-      data: payout,
-      message: 'Payout requested successfully',
-    });
-  } catch (error) {
-    console.error('Request payout error:', error);
-    
-    if (error instanceof z.ZodError) {
+    if (!campaignId) {
       return res.status(400).json({
         success: false,
-        message: 'Invalid request data',
-        errors: error.issues,
+        message: 'Campaign ID is required',
       });
     }
 
-    res.status(500).json({
+    const payout = await payoutService.requestPayout(campaignId, userId);
+
+    res.status(201).json({
+      success: true,
+      message: 'Payout request submitted and processed automatically',
+      data: payout,
+    });
+  } catch (error: any) {
+    console.error('Error requesting payout:', error);
+    res.status(400).json({
       success: false,
-      message: error instanceof Error ? error.message : 'Failed to request payout',
+      message: error.message || 'Failed to request payout',
     });
   }
 });
@@ -208,6 +188,92 @@ router.post('/webhook/stripe', async (req, res) => {
     res.status(400).json({
       success: false,
       message: 'Webhook error',
+    });
+  }
+});
+
+// Debug endpoint to reprocess donations for campaigns that have missing available balance
+router.post('/debug/reprocess-campaign/:campaignId', async (req: any, res: any) => {
+  try {
+    const { campaignId } = req.params;
+
+    // Get all completed donations for this campaign
+    const campaignDonations = await db.query.donations.findMany({
+      where: and(eq(donations.campaignId, campaignId), eq(donations.status, 'completed')),
+      orderBy: [donations.createdAt],
+    });
+
+    console.log(`Found ${campaignDonations.length} completed donations for campaign ${campaignId}`);
+
+    let totalReprocessed = 0;
+    let totalAmount = 0;
+    const errors = [];
+
+    for (const donation of campaignDonations) {
+      try {
+        console.log(`Reprocessing donation ${donation.id} (${donation.amount})`);
+        await payoutService.processDonation(donation.id);
+        totalReprocessed++;
+        totalAmount += parseFloat(donation.amount);
+      } catch (error) {
+        console.error(`Failed to reprocess donation ${donation.id}:`, error);
+        errors.push({ 
+          donationId: donation.id, 
+          error: error instanceof Error ? error.message : 'Unknown error' 
+        });
+      }
+    }
+
+    res.json({
+      success: true,
+      message: `Reprocessed ${totalReprocessed} donations`,
+      data: {
+        totalDonations: campaignDonations.length,
+        reprocessed: totalReprocessed,
+        totalAmount,
+        errors,
+      },
+    });
+  } catch (error) {
+    console.error('Reprocess donations error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to reprocess donations',
+    });
+  }
+});
+
+// Debug endpoint to set Stripe Connect account ID for testing
+router.post('/debug/set-stripe-connect/:campaignId', async (req: any, res: any) => {
+  try {
+    const { campaignId } = req.params;
+    const { stripeConnectAccountId } = req.body;
+
+    if (!stripeConnectAccountId) {
+      return res.status(400).json({
+        success: false,
+        message: 'stripeConnectAccountId is required',
+      });
+    }
+
+    await db
+      .update(campaigns)
+      .set({ 
+        stripeConnectAccountId,
+        updatedAt: new Date(),
+      })
+      .where(eq(campaigns.id, campaignId));
+
+    res.json({
+      success: true,
+      message: 'Stripe Connect account ID updated successfully',
+      data: { campaignId, stripeConnectAccountId },
+    });
+  } catch (error) {
+    console.error('Update Stripe Connect ID error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to update Stripe Connect account ID',
     });
   }
 });
