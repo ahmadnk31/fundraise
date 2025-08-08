@@ -1,48 +1,45 @@
-import { VercelRequest, VercelResponse } from '@vercel/node';
+import type { VercelRequest, VercelResponse } from '@vercel/node';
 
 export default function handler(req: VercelRequest, res: VercelResponse) {
-  // Handle CORS
-  res.setHeader('Access-Control-Allow-Credentials', 'true');
+  // Set CORS headers
   res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,PATCH,DELETE,POST,PUT');
-  res.setHeader('Access-Control-Allow-Headers', 'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version, Authorization');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
 
   if (req.method === 'OPTIONS') {
     return res.status(200).end();
   }
 
+  const { url } = req;
+
   try {
-    if (req.url === '/api/health') {
-      return res.json({
+    if (url === '/api/health') {
+      return res.status(200).json({
         status: 'OK',
         timestamp: new Date().toISOString(),
         environment: process.env.NODE_ENV || 'development',
-        database: process.env.DATABASE_URL ? 'configured' : 'missing',
-        method: req.method,
-        url: req.url
+        database: process.env.DATABASE_URL ? 'configured' : 'missing'
       });
     }
 
-    if (req.url === '/api/test') {
-      return res.json({
+    if (url === '/api/test') {
+      return res.status(200).json({
         message: 'Test endpoint working',
         timestamp: new Date().toISOString()
       });
     }
 
-    // Default 404
     return res.status(404).json({
       success: false,
       message: 'API endpoint not found',
-      path: req.url
+      path: url
     });
 
-  } catch (error: any) {
-    console.error('Function error:', error);
+  } catch (error) {
+    console.error('Handler error:', error);
     return res.status(500).json({
       success: false,
-      message: 'Internal server error',
-      error: error.message
+      message: 'Internal server error'
     });
   }
 }
