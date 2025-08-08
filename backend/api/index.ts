@@ -25,6 +25,7 @@ app.use(helmet({
 app.use(cors({
   origin: [
     process.env.FRONTEND_URL || 'http://localhost:8080',
+    'https://fundraise-inky.vercel.app',
     'https://fundraise-7e3nm2la2-ahmadnk31s-projects.vercel.app',
     'https://fundraise-csmdni4m3-ahmadnk31s-projects.vercel.app',
     /^https:\/\/fundraise-.*\.vercel\.app$/,
@@ -45,11 +46,20 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
 // Health check endpoint
 app.get('/api/health', (req, res) => {
-  res.json({ 
-    status: 'OK', 
-    timestamp: new Date().toISOString(),
-    environment: process.env.NODE_ENV || 'development'
-  });
+  try {
+    res.json({ 
+      status: 'OK', 
+      timestamp: new Date().toISOString(),
+      environment: process.env.NODE_ENV || 'development',
+      database: process.env.DATABASE_URL ? 'configured' : 'missing'
+    });
+  } catch (error) {
+    console.error('Health check error:', error);
+    res.status(500).json({
+      status: 'ERROR',
+      message: error.message
+    });
+  }
 });
 
 // API routes
@@ -70,7 +80,13 @@ app.use('/api/*', (req, res) => {
 
 // Global error handler
 app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
-  console.error('Global error handler:', err);
+  console.error('Global error handler:', {
+    error: err.message,
+    stack: err.stack,
+    url: req.url,
+    method: req.method,
+    timestamp: new Date().toISOString()
+  });
   
   // Don't leak error details in production
   const isDevelopment = process.env.NODE_ENV === 'development';

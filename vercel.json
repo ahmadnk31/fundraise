@@ -31,8 +31,8 @@
   ],
   "env": {
     "NODE_ENV": "production",
-    "FRONTEND_URL": "https://fundraise-inky.vercel.app/",
+    "FRONTEND_URL": "https://fundraise-inky.vercel.app",
     "VITE_API_URL": "https://fundraise-inky.vercel.app/api",
-    "DATABASE_URL": "@database_url"
+    "DATABASE_URL": "postgresql://neondb_owner:npg_nzoZtq7yTl6C@ep-holy-tooth-a2qfspqu-pooler.eu-central-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require"
   }
 }
