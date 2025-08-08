@@ -1,18 +1,7 @@
 import { VercelRequest, VercelResponse } from '@vercel/node';
-import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
-
-// Use serverless-optimized database connection
-import '../src/lib/db-serverless.js';
-
-// Import routes
-import authRoutes from '../src/routes/auth.routes.js';
-import campaignRoutes from '../src/routes/campaign.routes.js';
-import uploadRoutes from '../src/routes/upload.routes.js';
-import userRoutes from '../src/routes/user.routes.js';
-import donationRoutes from '../src/routes/donation.routes.js';
 
 const app = express();
 
@@ -37,9 +26,6 @@ app.use(cors({
   allowedHeaders: ['Content-Type', 'Authorization', 'x-requested-with'],
 }));
 
-// Raw body parsing for Stripe webhooks
-app.use('/api/donations/webhook', express.raw({ type: 'application/json' }));
-
 // Body parsing middleware
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
@@ -53,7 +39,7 @@ app.get('/api/health', (req, res) => {
       environment: process.env.NODE_ENV || 'development',
       database: process.env.DATABASE_URL ? 'configured' : 'missing'
     });
-  } catch (error) {
+  } catch (error: any) {
     console.error('Health check error:', error);
     res.status(500).json({
       status: 'ERROR',
@@ -62,12 +48,10 @@ app.get('/api/health', (req, res) => {
   }
 });
 
-// API routes
-app.use('/api/auth', authRoutes);
-app.use('/api/campaigns', campaignRoutes);
-app.use('/api/upload', uploadRoutes);
-app.use('/api/users', userRoutes);
-app.use('/api/donations', donationRoutes);
+// Test endpoint
+app.get('/api/test', (req, res) => {
+  res.json({ message: 'Test endpoint working' });
+});
 
 // 404 handler
 app.use('/api/*', (req, res) => {
@@ -88,13 +72,9 @@ app.use((err: any, req: express.Request, res: express.Response, next: express.Ne
     timestamp: new Date().toISOString()
   });
   
-  // Don't leak error details in production
-  const isDevelopment = process.env.NODE_ENV === 'development';
-  
   res.status(err.status || 500).json({
     success: false,
     message: err.message || 'Internal server error',
-    ...(isDevelopment && { stack: err.stack }),
   });
 });
 
