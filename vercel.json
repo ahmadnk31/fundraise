@@ -12,13 +12,6 @@
         ],
         "maxDuration": 30
       }
-    },
-    {
-      "src": "frontend/package.json",
-      "use": "@vercel/static-build",
-      "config": {
-        "distDir": "frontend/dist"
-      }
     }
   ],
   "routes": [
@@ -28,10 +21,13 @@
     },
     {
       "src": "/(.*)",
-      "dest": "/frontend/$1"
+      "dest": "/frontend/dist/$1"
     }
   ],
   "env": {
     "NODE_ENV": "production"
-  }
+  },
+  "installCommand": "cd frontend && npm install",
+  "buildCommand": "cd frontend && npm run build",
+  "outputDirectory": "frontend/dist"
 }
