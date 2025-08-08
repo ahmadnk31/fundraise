@@ -104,70 +104,73 @@ function handleCampaignRoutes(req, res, path, method) {
     });
   }
 
-  if (path === '/campaigns' && method === 'GET') {
-    // Parse query parameters
-    const urlParams = new URL(req.url, `http://${req.headers.host}`);
-    const featured = urlParams.searchParams.get('featured');
-    const limit = parseInt(urlParams.searchParams.get('limit') || '10');
-    
-    // Mock campaign data
-    const mockCampaigns = [
-      {
-        id: "1",
-        title: "Help Build Community Center",
-        summary: "Building a community center for local families",
-        goalAmount: "50000",
-        raisedAmount: "12500",
-        deadline: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
-        category: "Community",
-        coverImage: "https://images.unsplash.com/photo-1559827260-dc66d52bef19?w=800",
-        creator: {
+  if (path.startsWith('/campaigns') && method === 'GET') {
+    // Handle /campaigns with query parameters
+    if (path === '/campaigns' || path.includes('/campaigns?')) {
+      // Parse query parameters
+      const urlParams = new URL(req.url, `http://${req.headers.host}`);
+      const featured = urlParams.searchParams.get('featured');
+      const limit = parseInt(urlParams.searchParams.get('limit') || '10');
+      
+      // Mock campaign data
+      const mockCampaigns = [
+        {
           id: "1",
-          firstName: "John",
-          lastName: "Doe",
-          avatar: null
+          title: "Help Build Community Center",
+          summary: "Building a community center for local families",
+          goalAmount: "50000",
+          raisedAmount: "12500",
+          deadline: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+          category: "Community",
+          coverImage: "https://images.unsplash.com/photo-1559827260-dc66d52bef19?w=800",
+          creator: {
+            id: "1",
+            firstName: "John",
+            lastName: "Doe",
+            avatar: null
+          },
+          isActive: true,
+          isApproved: true,
+          createdAt: new Date().toISOString()
         },
-        isActive: true,
-        isApproved: true,
-        createdAt: new Date().toISOString()
-      },
-      {
-        id: "2",
-        title: "Medical Treatment Fund",
-        summary: "Raising funds for urgent medical treatment",
-        goalAmount: "25000",
-        raisedAmount: "18000",
-        deadline: new Date(Date.now() + 15 * 24 * 60 * 60 * 1000).toISOString(),
-        category: "Medical",
-        coverImage: "https://images.unsplash.com/photo-1559757148-5c350d0d3c56?w=800",
-        creator: {
+        {
           id: "2",
-          firstName: "Jane",
-          lastName: "Smith",
-          avatar: null
-        },
-        isActive: true,
-        isApproved: true,
-        createdAt: new Date().toISOString()
-      }
-    ];
-
-    const campaigns = featured === 'true' ? mockCampaigns.slice(0, limit) : mockCampaigns;
-
-    return res.json({
-      success: true,
-      data: {
-        campaigns,
-        pagination: {
-          page: 1,
-          limit,
-          total: campaigns.length,
-          totalPages: 1,
-          hasNext: false,
-          hasPrev: false
+          title: "Medical Treatment Fund",
+          summary: "Raising funds for urgent medical treatment",
+          goalAmount: "25000",
+          raisedAmount: "18000",
+          deadline: new Date(Date.now() + 15 * 24 * 60 * 60 * 1000).toISOString(),
+          category: "Medical",
+          coverImage: "https://images.unsplash.com/photo-1559757148-5c350d0d3c56?w=800",
+          creator: {
+            id: "2",
+            firstName: "Jane",
+            lastName: "Smith",
+            avatar: null
+          },
+          isActive: true,
+          isApproved: true,
+          createdAt: new Date().toISOString()
         }
-      }
-    });
+      ];
+
+      const campaigns = featured === 'true' ? mockCampaigns.slice(0, limit) : mockCampaigns;
+
+      return res.json({
+        success: true,
+        data: {
+          campaigns,
+          pagination: {
+            page: 1,
+            limit,
+            total: campaigns.length,
+            totalPages: 1,
+            hasNext: false,
+            hasPrev: false
+          }
+        }
+      });
+    }
   }
 
   return res.status(404).json({
