@@ -9,8 +9,13 @@
       }
     },
     {
-      "src": "backend/api/index.ts",
-      "use": "@vercel/node"
+      "src": "backend/api/*.ts",
+      "use": "@vercel/node",
+      "config": {
+        "includeFiles": [
+          "backend/package.json"
+        ]
+      }
     }
   ],
   "routes": [
@@ -24,9 +29,10 @@
     }
   ],
   "functions": {
-    "backend/api/index.ts": {
+    "backend/api/*.ts": {
       "maxDuration": 30
     }
   },
-  "installCommand": "cd frontend && npm install"
+  "installCommand": "cd frontend && npm install",
+  "buildCommand": "cd frontend && npm run build"
 }
