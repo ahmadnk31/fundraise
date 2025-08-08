@@ -3,10 +3,12 @@ import { useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Progress } from "@/components/ui/progress";
 import { Navigation } from "@/components/Navigation";
 import { Footer } from "@/components/Footer";
+import { StripeConnectCard } from "@/components/StripeConnectCard";
 import { useAuth } from "@/hooks/useAuth";
 import { useNavigate } from "react-router-dom";
 import ApiService from "@/services/api.service";
@@ -26,7 +28,8 @@ import {
   Wallet,
   CreditCard,
   AlertCircle,
-  CheckCircle
+  CheckCircle,
+  Info as InfoIcon
 } from "lucide-react";
 
 interface CampaignWithStats extends Campaign {
@@ -204,41 +207,40 @@ const Dashboard = () => {
   };
 
   const handleRequestPayout = async (campaignId: string) => {
-    try {
-      // For now, we'll use Stripe as default payment method
-      // In a real app, you'd show a modal to collect payment details
-      const payoutData = {
-        campaignId,
-        paymentMethod: 'stripe' as const,
-      };
+    const campaign = userCampaigns.find(c => c.id === campaignId);
+    const balance = campaignBalances[campaignId];
+    
+    if (!campaign || !balance) {
+      alert('Campaign or balance information not found');
+      return;
+    }
 
-      const response = await ApiService.requestPayout(payoutData);
+    if (!balance.canPayout) {
+      alert(`Minimum payout amount is $${balance.minimumPayoutAmount}`);
+      return;
+    }
+
+    try {
+      const response = await ApiService.requestPayout({ campaignId });
       
       if (response.success) {
-        // Refresh payouts and balances
-        try {
-          const payoutsResponse = await ApiService.getUserPayouts({ limit: 10 });
-          setUserPayouts(payoutsResponse.data.payouts || []);
-          
-          const balanceResponse = await ApiService.getCampaignBalance(campaignId);
-          if (balanceResponse.success && balanceResponse.data) {
-            setCampaignBalances(prev => ({
-              ...prev,
-              [campaignId]: balanceResponse.data!
-            }));
-          }
-          
-          alert('Payout request submitted successfully!');
-        } catch (refreshError) {
-          console.warn('Failed to refresh data after payout request:', refreshError);
-          alert('Payout request submitted successfully! Please refresh the page to see updates.');
-        }
+        alert('Payout requested successfully! Your funds will be transferred automatically via Stripe Connect.');
+        // Refresh the dashboard data
+        window.location.reload();
       } else {
-        alert(response.message || 'Failed to request payout');
+        throw new Error(response.message || 'Failed to request payout');
       }
-    } catch (error) {
-      console.error('Error requesting payout:', error);
-      alert('Failed to request payout. Please try again.');
+    } catch (error: any) {
+      console.error('Payout request error:', error);
+      
+      let errorMessage = error.message || 'Unknown error';
+      
+      // Show more helpful message for test environment
+      if (errorMessage.includes('Test Environment') || errorMessage.includes('insufficient available funds')) {
+        alert(`⚠️ Test Environment Notice:\n\n${errorMessage}\n\nℹ️ In production, this would work automatically with real donations funding the platform account.`);
+      } else {
+        alert(`Failed to request payout: ${errorMessage}`);
+      }
     }
   };
 
@@ -598,6 +600,42 @@ const Dashboard = () => {
             </TabsContent>
 
             <TabsContent value="payouts" className="space-y-6">
+              {/* Development Notice */}
+              <Alert className="border-blue-200 bg-blue-50">
+                <InfoIcon className="h-4 w-4" />
+                <AlertDescription className="text-blue-800">
+                  <strong>Automatic Payout System:</strong> All payouts are processed automatically through Stripe Connect. 
+                  You must complete your Stripe Connect onboarding to receive payouts.
+                </AlertDescription>
+              </Alert>
+
+              {/* Test Environment Notice */}
+              <Alert className="border-orange-200 bg-orange-50">
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription className="text-orange-800">
+                  <strong>Test Environment:</strong> In test mode, the platform account needs funds before transfers can be made. 
+                  In production, donations would automatically fund the platform account. 
+                  <br /><br />
+                  <strong>To test payouts:</strong>
+                  <br />• Make a test donation to your campaign first (this adds funds to the platform account)
+                  <br />• Or use the Stripe test card 4000000000000077 to add funds directly to your platform account
+                </AlertDescription>
+              </Alert>
+
+              {/* Stripe Connect Setup for Each Campaign */}
+              { userCampaigns.length > 0 && (
+                <div className="space-y-4">
+                  <h3 className="text-lg font-semibold">Payment Setup</h3>
+                  {userCampaigns.map((campaign) => (
+                    <StripeConnectCard
+                      key={campaign.id}
+                      campaignId={campaign.id}
+                      campaignTitle={campaign.title}
+                    />
+                  ))}
+                </div>
+              )}
+
               <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">

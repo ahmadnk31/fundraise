@@ -446,5 +446,31 @@ router.delete('/:id', authMiddleware, requireVerifiedUser, async (req, res) => {
         });
     }
 });
+// Debug endpoint to check campaign balances (temporary)
+router.get('/debug/balances', async (req, res) => {
+    try {
+        const campaignsWithBalance = await db
+            .select({
+            id: campaigns.id,
+            title: campaigns.title,
+            currentAmount: campaigns.currentAmount,
+            availableBalance: campaigns.availableBalance,
+            paidOut: campaigns.paidOut,
+        })
+            .from(campaigns)
+            .limit(10);
+        res.json({
+            success: true,
+            data: campaignsWithBalance,
+        });
+    }
+    catch (error) {
+        console.error('Debug balance check error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Failed to check balances',
+        });
+    }
+});
 export default router;
 //# sourceMappingURL=campaign.routes.js.map

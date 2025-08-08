@@ -123,7 +123,7 @@ export class PayoutService {
   }
 
   // Create a payout request
-  async requestPayout(campaignId: string, userId: string, paymentMethod: 'stripe' | 'paypal' | 'bank_transfer', paymentDetails: any) {
+  async requestPayout(campaignId: string, userId: string) {
     try {
       // Verify campaign ownership
       const campaign = await db.query.campaigns.findFirst({
@@ -132,6 +132,11 @@ export class PayoutService {
 
       if (!campaign) {
         throw new Error('Campaign not found or access denied');
+      }
+
+      // Check if Stripe Connect account is set up
+      if (!campaign.stripeConnectAccountId) {
+        throw new Error('Stripe Connect account not set up for this campaign');
       }
 
       const balance = await this.getCampaignBalance(campaignId);
@@ -143,9 +148,9 @@ export class PayoutService {
       const settings = await this.getPlatformSettings();
       const amount = balance.availableBalance;
       
-      // For demonstration, we'll assume no additional fees for payouts
-      // In practice, you might have payout processing fees
-      const netAmount = amount;
+      // Calculate platform fee (5%)
+      const platformFee = amount * 0.05;
+      const netAmount = amount - platformFee;
 
       // Create payout record
       const [payout] = await db
@@ -154,39 +159,43 @@ export class PayoutService {
           campaignId,
           userId,
           amount: amount.toFixed(2),
-          platformFee: '0.00', // No additional platform fee on payout
-          processingFee: '0.00', // You might add payout processing fees here
+          platformFee: platformFee.toFixed(2),
+          processingFee: '0.00', // Stripe Connect handles processing fees
           netAmount: netAmount.toFixed(2),
           currency: campaign.currency,
           status: 'pending',
-          paymentMethod,
-          bankAccount: paymentMethod === 'bank_transfer' ? paymentDetails : null,
-          paypalEmail: paymentMethod === 'paypal' ? paymentDetails.email : null,
+          paymentMethod: 'stripe_connect',
         })
         .returning();
 
-      // Update campaign balance (reserve the amount)
-      await db
-        .update(campaigns)
-        .set({
-          availableBalance: '0.00',
-          updatedAt: new Date(),
-        })
-        .where(eq(campaigns.id, campaignId));
+      // Process Stripe transfer immediately
+      const transferResult = await this.processStripePayout(payout.id);
 
-      // Create transaction record
-      await db.insert(transactions).values({
-        campaignId,
-        payoutId: payout.id,
-        type: 'payout',
-        amount: amount.toFixed(2),
-        platformFee: '0.00',
-        processingFee: '0.00',
-        netAmount: netAmount.toFixed(2),
-        currency: campaign.currency,
-        status: 'pending',
-        description: `Payout request via ${paymentMethod}`,
-      });
+      if (transferResult.success) {
+        // Update campaign balance (reserve the amount)
+        await db
+          .update(campaigns)
+          .set({
+            availableBalance: '0.00',
+            paidOut: (parseFloat(campaign.paidOut) + amount).toFixed(2),
+            updatedAt: new Date(),
+          })
+          .where(eq(campaigns.id, campaignId));
+
+        // Create transaction record
+        await db.insert(transactions).values({
+          campaignId,
+          payoutId: payout.id,
+          type: 'payout',
+          amount: amount.toFixed(2),
+          platformFee: platformFee.toFixed(2),
+          processingFee: '0.00',
+          netAmount: netAmount.toFixed(2),
+          currency: campaign.currency,
+          status: 'processing',
+          description: `Automatic payout via Stripe Connect`,
+        });
+      }
 
       return payout;
     } catch (error) {
@@ -251,7 +260,14 @@ export class PayoutService {
     } catch (error) {
       console.error('Error processing Stripe payout:', error);
       
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      let errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      
+      // Handle specific Stripe test environment errors
+      if (errorMessage.includes('insufficient available funds')) {
+        errorMessage = 'Test Environment: Platform account has insufficient funds. In test mode, you need to add funds to your Stripe platform account first. This would not occur in production with real donations.';
+      } else if (errorMessage.includes('4000000000000077')) {
+        errorMessage = 'Test Environment: Use the test card 4000000000000077 to add funds to your platform account first.';
+      }
       
       // Mark payout as failed
       await db
@@ -263,7 +279,7 @@ export class PayoutService {
         })
         .where(eq(payouts.id, payoutId));
 
-      throw error;
+      throw new Error(errorMessage);
     }
   }
 

@@ -220,14 +220,6 @@ export interface Payout {
 
 export interface CreatePayoutRequest {
   campaignId: string;
-  paymentMethod: 'stripe' | 'paypal' | 'bank_transfer';
-  paymentDetails?: {
-    email?: string;
-    accountNumber?: string;
-    routingNumber?: string;
-    bankName?: string;
-    accountType?: 'checking' | 'savings';
-  };
 }
 
 export interface CampaignBalance {
@@ -556,6 +548,16 @@ export interface UserCampaignQueryParams {
 export interface UserDonationQueryParams {
   page?: number;
   limit?: number;
+}
+
+export interface StripeConnectStatus {
+  connected: boolean;
+  needsOnboarding: boolean;
+  canReceivePayments?: boolean;
+  canReceivePayouts?: boolean;
+  accountId?: string;
+  country?: string;
+  email?: string;
 }
 
 // Error Types
