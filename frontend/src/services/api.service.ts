@@ -51,54 +51,49 @@ class ApiService {
   }
 
   // Auth endpoints
-  static async register(data: {
-    email: string;
-    password: string;
-    firstName: string;
-    lastName: string;
-  }): Promise<AuthResponse> {
-    const response = await fetch(`${API_BASE_URL}/api/auth/register`, {
+  static async register(userData: RegisterData): Promise<ApiResponse<AuthResponse>> {
+    const response = await fetch(`${API_BASE_URL}/auth/register`, {
       method: 'POST',
-      headers: this.getAuthHeaders(),
-      body: JSON.stringify(data),
+      headers: this.getHeaders(),
+      body: JSON.stringify(userData),
     });
-    return this.handleResponse<AuthResponse>(response);
+    return this.handleResponse(response);
   }
 
-  static async login(data: { email: string; password: string }): Promise<AuthResponse> {
-    const response = await fetch(`${API_BASE_URL}/api/auth/login`, {
+  static async login(credentials: LoginCredentials): Promise<ApiResponse<AuthResponse>> {
+    const response = await fetch(`${API_BASE_URL}/auth/login`, {
       method: 'POST',
-      headers: this.getAuthHeaders(),
-      body: JSON.stringify(data),
+      headers: this.getHeaders(),
+      body: JSON.stringify(credentials),
     });
-    return this.handleResponse<AuthResponse>(response);
+    return this.handleResponse(response);
   }
 
-  static async verifyEmail(token: string): Promise<ApiResponse> {
-    const response = await fetch(`${API_BASE_URL}/api/auth/verify-email`, {
+  static async verifyEmail(token: string): Promise<ApiResponse<{ message: string }>> {
+    const response = await fetch(`${API_BASE_URL}/auth/verify-email`, {
       method: 'POST',
-      headers: this.getAuthHeaders(),
+      headers: this.getHeaders(),
       body: JSON.stringify({ token }),
     });
-    return this.handleResponse<ApiResponse>(response);
+    return this.handleResponse(response);
   }
 
-  static async forgotPassword(email: string): Promise<ApiResponse> {
-    const response = await fetch(`${API_BASE_URL}/api/auth/forgot-password`, {
+  static async forgotPassword(email: string): Promise<ApiResponse<{ message: string }>> {
+    const response = await fetch(`${API_BASE_URL}/auth/forgot-password`, {
       method: 'POST',
-      headers: this.getAuthHeaders(),
+      headers: this.getHeaders(),
       body: JSON.stringify({ email }),
     });
-    return this.handleResponse<ApiResponse>(response);
+    return this.handleResponse(response);
   }
 
-  static async resetPassword(data: { token: string; password: string }): Promise<ApiResponse> {
-    const response = await fetch(`${API_BASE_URL}/api/auth/reset-password`, {
+  static async resetPassword(token: string, password: string): Promise<ApiResponse<{ message: string }>> {
+    const response = await fetch(`${API_BASE_URL}/auth/reset-password`, {
       method: 'POST',
-      headers: this.getAuthHeaders(),
-      body: JSON.stringify(data),
+      headers: this.getHeaders(),
+      body: JSON.stringify({ token, password }),
     });
-    return this.handleResponse<ApiResponse>(response);
+    return this.handleResponse(response);
   }
 
   // Campaign endpoints

@@ -25,10 +25,15 @@ app.use(helmet({
 app.use(cors({
   origin: [
     process.env.FRONTEND_URL || 'http://localhost:8080',
+    'https://fundraise-7e3nm2la2-ahmadnk31s-projects.vercel.app',
+    'https://fundraise-csmdni4m3-ahmadnk31s-projects.vercel.app',
+    /^https:\/\/fundraise-.*\.vercel\.app$/,
     /\.vercel\.app$/,
     /^https:\/\/.*\.vercel\.app$/
   ],
   credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'x-requested-with'],
 }));
 
 // Raw body parsing for Stripe webhooks
