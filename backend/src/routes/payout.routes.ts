@@ -243,4 +243,39 @@ router.post('/debug/reprocess-campaign/:campaignId', async (req: any, res: any) 
   }
 });
 
+// Debug endpoint to set Stripe Connect account ID for testing
+router.post('/debug/set-stripe-connect/:campaignId', async (req: any, res: any) => {
+  try {
+    const { campaignId } = req.params;
+    const { stripeConnectAccountId } = req.body;
+
+    if (!stripeConnectAccountId) {
+      return res.status(400).json({
+        success: false,
+        message: 'stripeConnectAccountId is required',
+      });
+    }
+
+    await db
+      .update(campaigns)
+      .set({ 
+        stripeConnectAccountId,
+        updatedAt: new Date(),
+      })
+      .where(eq(campaigns.id, campaignId));
+
+    res.json({
+      success: true,
+      message: 'Stripe Connect account ID updated successfully',
+      data: { campaignId, stripeConnectAccountId },
+    });
+  } catch (error) {
+    console.error('Update Stripe Connect ID error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to update Stripe Connect account ID',
+    });
+  }
+});
+
 export default router;

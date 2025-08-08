@@ -25,10 +25,15 @@ export function StripeConnectCard({ campaignId, campaignTitle, onStatusChange }:
   const fetchStatus = async () => {
     try {
       setLoading(true);
+      console.log('Fetching Stripe Connect status for campaign:', campaignId);
       const response = await ApiService.getStripeConnectStatus(campaignId);
+      console.log('Stripe Connect status response:', response);
       if (response.success) {
+        console.log('Stripe Connect status data:', response.data);
         setStatus(response.data);
         onStatusChange?.(response.data);
+      } else {
+        console.error('Failed to fetch Stripe Connect status:', response.message);
       }
     } catch (error) {
       console.error('Error fetching Stripe Connect status:', error);

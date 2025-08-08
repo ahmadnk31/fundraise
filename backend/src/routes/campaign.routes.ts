@@ -549,6 +549,7 @@ router.get('/debug/balances', async (req, res) => {
         currentAmount: campaigns.currentAmount,
         availableBalance: campaigns.availableBalance,
         paidOut: campaigns.paidOut,
+        stripeConnectAccountId: campaigns.stripeConnectAccountId,
       })
       .from(campaigns)
       .limit(10);
@@ -562,6 +563,41 @@ router.get('/debug/balances', async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Failed to check balances',
+    });
+  }
+});
+
+// Debug endpoint to set Stripe Connect account ID for testing
+router.post('/debug/set-stripe-connect/:campaignId', async (req, res) => {
+  try {
+    const { campaignId } = req.params;
+    const { stripeConnectAccountId } = req.body;
+
+    if (!stripeConnectAccountId) {
+      return res.status(400).json({
+        success: false,
+        message: 'stripeConnectAccountId is required',
+      });
+    }
+
+    await db
+      .update(campaigns)
+      .set({ 
+        stripeConnectAccountId,
+        updatedAt: new Date(),
+      })
+      .where(eq(campaigns.id, campaignId));
+
+    res.json({
+      success: true,
+      message: 'Stripe Connect account ID updated successfully',
+      data: { campaignId, stripeConnectAccountId },
+    });
+  } catch (error) {
+    console.error('Update Stripe Connect ID error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to update Stripe Connect account ID',
     });
   }
 });

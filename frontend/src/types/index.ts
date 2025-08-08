@@ -558,6 +558,15 @@ export interface StripeConnectStatus {
   accountId?: string;
   country?: string;
   email?: string;
+  capabilities?: {
+    card_payments?: string;
+    transfers?: string;
+    [key: string]: string | undefined;
+  };
+  requirements?: {
+    currently_due?: string[];
+    [key: string]: any;
+  };
 }
 
 // Error Types
