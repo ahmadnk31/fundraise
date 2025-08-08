@@ -31,7 +31,8 @@
   ],
   "env": {
     "NODE_ENV": "production",
-    "FRONTEND_URL": "https://fundraise-csmdni4m3-ahmadnk31s-projects.vercel.app",
-    "VITE_API_URL": "https://fundraise-7e3nm2la2-ahmadnk31s-projects.vercel.app/api"
+    "FRONTEND_URL": "https://fundraise-inky.vercel.app/",
+    "VITE_API_URL": "https://fundraise-inky.vercel.app/api",
+    "DATABASE_URL": "@database_url"
   }
 }
