@@ -104,6 +104,47 @@ function handleCampaignRoutes(req, res, path, method) {
     });
   }
 
+  // Handle individual campaign by ID
+  if (path.match(/^\/campaigns\/\d+$/) && method === 'GET') {
+    const campaignId = path.split('/').pop();
+    
+    // Mock campaign detail data
+    const mockCampaign = {
+      id: campaignId,
+      title: campaignId === '1' ? "Help Build Community Center" : "Medical Treatment Fund",
+      summary: campaignId === '1' ? "Building a community center for local families" : "Raising funds for urgent medical treatment",
+      story: "This is a detailed story about the campaign...",
+      goalAmount: campaignId === '1' ? "50000" : "25000",
+      raisedAmount: campaignId === '1' ? "12500" : "18000",
+      deadline: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+      category: campaignId === '1' ? "Community" : "Medical",
+      location: "New York, NY",
+      budgetBreakdown: "Equipment: 40%, Labor: 35%, Materials: 25%",
+      coverImage: campaignId === '1' ? "https://images.unsplash.com/photo-1559827260-dc66d52bef19?w=800" : "https://images.unsplash.com/photo-1559757148-5c350d0d3c56?w=800",
+      additionalMedia: [],
+      creator: {
+        id: campaignId === '1' ? "1" : "2",
+        firstName: campaignId === '1' ? "John" : "Jane",
+        lastName: campaignId === '1' ? "Doe" : "Smith",
+        email: campaignId === '1' ? "john@example.com" : "jane@example.com",
+        avatar: null
+      },
+      isActive: true,
+      isApproved: true,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      donationCount: campaignId === '1' ? 25 : 18,
+      followerCount: campaignId === '1' ? 150 : 89
+    };
+
+    return res.json({
+      success: true,
+      data: {
+        campaign: mockCampaign
+      }
+    });
+  }
+
   if (path.startsWith('/campaigns') && method === 'GET') {
     // Handle /campaigns with query parameters
     if (path === '/campaigns' || path.includes('/campaigns?')) {
@@ -205,7 +246,40 @@ function handleCommentRoutes(req, res, path, method) {
 }
 
 function handleFollowRoutes(req, res, path, method) {
-  return res.status(501).json({ success: false, message: 'Follow endpoints not implemented yet' });
+  // Handle follow count endpoint
+  if (path.match(/^\/follows\/count\/\d+$/) && method === 'GET') {
+    const campaignId = path.split('/').pop();
+    
+    // Mock follow count data
+    const followCount = campaignId === '1' ? 150 : campaignId === '2' ? 89 : 45;
+    
+    return res.json({
+      success: true,
+      data: {
+        campaignId,
+        followCount
+      }
+    });
+  }
+
+  // Handle follow status endpoint
+  if (path.match(/^\/follows\/status\/\d+$/) && method === 'GET') {
+    const campaignId = path.split('/').pop();
+    
+    return res.json({
+      success: true,
+      data: {
+        campaignId,
+        isFollowing: false // Default to not following since no auth
+      }
+    });
+  }
+
+  // Handle other follow endpoints
+  return res.status(501).json({ 
+    success: false, 
+    message: 'Follow endpoint not implemented yet' 
+  });
 }
 
 function handleStripeConnectRoutes(req, res, path, method) {
