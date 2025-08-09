@@ -134,7 +134,18 @@ function handleCampaignRoutes(req, res, path, method) {
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
       donationCount: campaignId === '1' ? 25 : 18,
-      followerCount: campaignId === '1' ? 150 : 89
+      followerCount: campaignId === '1' ? 150 : 89,
+      // Add statistics that the frontend expects
+      stats: {
+        totalDonors: campaignId === '1' ? 25 : 18,
+        totalDonations: campaignId === '1' ? 25 : 18,
+        averageDonation: campaignId === '1' ? "500" : "1000",
+        recentDonations: campaignId === '1' ? 3 : 2
+      },
+      // Add financial data
+      totalDonors: campaignId === '1' ? 25 : 18,
+      totalRaised: campaignId === '1' ? "12500" : "18000",
+      progress: campaignId === '1' ? 25 : 72
     };
 
     return res.json({
@@ -222,11 +233,116 @@ function handleCampaignRoutes(req, res, path, method) {
 
 // Placeholder handlers for other routes
 function handleAuthRoutes(req, res, path, method) {
-  return res.status(501).json({ success: false, message: 'Auth endpoints not implemented yet' });
+  // Handle auth check/verification
+  if (path === '/auth/me' && method === 'GET') {
+    // Return null/unauthorized to indicate no user is logged in
+    return res.status(401).json({
+      success: false,
+      message: 'Not authenticated'
+    });
+  }
+
+  // Handle login endpoint
+  if (path === '/auth/login' && method === 'POST') {
+    return res.json({
+      success: true,
+      message: 'Login successful',
+      data: {
+        user: {
+          id: "1",
+          firstName: "John",
+          lastName: "Doe",
+          email: "john@example.com",
+          avatar: null
+        },
+        token: "mock_jwt_token"
+      }
+    });
+  }
+
+  // Handle register endpoint
+  if (path === '/auth/register' && method === 'POST') {
+    return res.json({
+      success: true,
+      message: 'Registration successful',
+      data: {
+        user: {
+          id: "1",
+          firstName: "John",
+          lastName: "Doe",
+          email: "john@example.com",
+          avatar: null
+        },
+        token: "mock_jwt_token"
+      }
+    });
+  }
+
+  return res.status(501).json({ 
+    success: false, 
+    message: 'Auth endpoint not implemented yet' 
+  });
 }
 
 function handleUserRoutes(req, res, path, method) {
-  return res.status(501).json({ success: false, message: 'User endpoints not implemented yet' });
+  // Handle dashboard endpoint
+  if (path === '/users/dashboard' && method === 'GET') {
+    return res.json({
+      success: true,
+      data: {
+        totalCampaigns: 2,
+        totalRaised: "30500",
+        totalDonors: 43,
+        activeCampaigns: 2,
+        campaignStats: {
+          pending: 0,
+          active: 2,
+          completed: 0,
+          rejected: 0
+        },
+        recentDonations: [
+          {
+            id: "1",
+            amount: "100",
+            campaignTitle: "Help Build Community Center",
+            donorName: "Anonymous",
+            createdAt: new Date().toISOString()
+          }
+        ],
+        monthlyStats: {
+          totalRaised: "5000",
+          totalDonors: 15,
+          newCampaigns: 1
+        }
+      }
+    });
+  }
+
+  // Handle profile endpoint
+  if (path === '/users/profile' && method === 'GET') {
+    return res.json({
+      success: true,
+      data: {
+        id: "1",
+        firstName: "John",
+        lastName: "Doe",
+        email: "john@example.com",
+        avatar: null,
+        isEmailVerified: true,
+        createdAt: new Date().toISOString(),
+        stats: {
+          totalCampaigns: 2,
+          totalRaised: "30500",
+          totalDonors: 43
+        }
+      }
+    });
+  }
+
+  return res.status(501).json({ 
+    success: false, 
+    message: 'User endpoint not implemented yet' 
+  });
 }
 
 function handleUploadRoutes(req, res, path, method) {
