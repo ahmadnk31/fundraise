@@ -64,6 +64,7 @@ const StripeCheckoutForm: React.FC<StripeCheckoutFormProps> = ({
           Payment Information
         </label>
         <PaymentElement 
+        
           options={{
             layout: 'tabs',
           }}

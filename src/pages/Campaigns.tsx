@@ -295,101 +295,102 @@ export const Campaigns: React.FC = () => {
       {/* Campaigns Grid */}
       <section className="py-12">
         <div className="container mx-auto px-4">
-          <div className="flex justify-between items-center mb-8">
+            <div className="flex flex-col gap-4 sm:flex-row sm:justify-between sm:items-center mb-8">
             <h2 className="text-2xl font-bold">
               {pagination.total} Campaign{pagination.total !== 1 ? 's' : ''} Found
               {selectedCategory !== 'All' && (
-                <span className="text-lg text-muted-foreground font-normal ml-2">
-                  in {selectedCategory}
-                </span>
+              <span className="text-lg text-muted-foreground font-normal ml-2">
+                in {selectedCategory}
+              </span>
               )}
             </h2>
             
-            <div className="flex items-center gap-3">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
               {/* Active Filters Indicator */}
               {getActiveFilterCount() > 0 && (
-                <div className="flex items-center gap-2">
-                  <Badge variant="secondary" className="text-xs">
-                    {getActiveFilterCount()} filter{getActiveFilterCount() !== 1 ? 's' : ''} active
-                  </Badge>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={handleClearAllFilters}
-                    className="text-xs text-muted-foreground hover:text-destructive"
-                  >
-                    Clear all
-                  </Button>
-                </div>
+              <div className="flex items-center gap-2">
+                <Badge variant="secondary" className="text-xs">
+                {getActiveFilterCount()} filter{getActiveFilterCount() !== 1 ? 's' : ''} active
+                </Badge>
+                <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleClearAllFilters}
+                className="text-xs text-muted-foreground hover:text-destructive"
+                >
+                Clear all
+                </Button>
+              </div>
               )}
               
               {/* Sort & Filter Dropdown */}
               <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="outline" className="flex items-center gap-2">
-                    <Filter className="w-4 h-4" />
-                    Sort & Filter
-                    {getActiveFilterCount() > 0 && (
-                      <Badge variant="destructive" className="ml-1 h-5 w-5 p-0 text-xs">
-                        {getActiveFilterCount()}
-                      </Badge>
-                    )}
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-56">
-                  <DropdownMenuLabel className="flex items-center gap-2">
-                    <SortAsc className="w-4 h-4" />
-                    Sort By
-                  </DropdownMenuLabel>
-                  <DropdownMenuRadioGroup value={sortBy} onValueChange={setSortBy}>
-                    <DropdownMenuRadioItem value="recent" className="flex items-center gap-2">
-                      <Clock className="w-4 h-4" />
-                      Most Recent
-                    </DropdownMenuRadioItem>
-                    <DropdownMenuRadioItem value="raised" className="flex items-center gap-2">
-                      <TrendingUp className="w-4 h-4" />
-                      Most Raised
-                    </DropdownMenuRadioItem>
-                    <DropdownMenuRadioItem value="goal" className="flex items-center gap-2">
-                      <Target className="w-4 h-4" />
-                      Highest Goal
-                    </DropdownMenuRadioItem>
-                  </DropdownMenuRadioGroup>
-                  
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" className="flex items-center gap-2 w-full sm:w-auto">
+                <Filter className="w-4 h-4" />
+                <span className="hidden xs:inline">Sort & Filter</span>
+                <span className="inline xs:hidden">Filter</span>
+                {getActiveFilterCount() > 0 && (
+                  <Badge variant="destructive" className="ml-1 h-5 w-5 p-0 text-xs">
+                  {getActiveFilterCount()}
+                  </Badge>
+                )}
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-56">
+                <DropdownMenuLabel className="flex items-center gap-2">
+                <SortAsc className="w-4 h-4" />
+                Sort By
+                </DropdownMenuLabel>
+                <DropdownMenuRadioGroup value={sortBy} onValueChange={setSortBy}>
+                <DropdownMenuRadioItem value="recent" className="flex items-center gap-2">
+                  <Clock className="w-4 h-4" />
+                  Most Recent
+                </DropdownMenuRadioItem>
+                <DropdownMenuRadioItem value="raised" className="flex items-center gap-2">
+                  <TrendingUp className="w-4 h-4" />
+                  Most Raised
+                </DropdownMenuRadioItem>
+                <DropdownMenuRadioItem value="goal" className="flex items-center gap-2">
+                  <Target className="w-4 h-4" />
+                  Highest Goal
+                </DropdownMenuRadioItem>
+                </DropdownMenuRadioGroup>
+                
+                <DropdownMenuSeparator />
+                
+                <DropdownMenuLabel className="flex items-center gap-2">
+                <Filter className="w-4 h-4" />
+                Filters
+                </DropdownMenuLabel>
+                <DropdownMenuItem
+                onClick={() => setShowFeaturedOnly(!showFeaturedOnly)}
+                className="flex items-center justify-between"
+                >
+                <span className="flex items-center gap-2">
+                  <Users className="w-4 h-4" />
+                  Featured Only
+                </span>
+                {showFeaturedOnly && (
+                  <Badge variant="secondary" className="text-xs">On</Badge>
+                )}
+                </DropdownMenuItem>
+                
+                {getActiveFilterCount() > 0 && (
+                <>
                   <DropdownMenuSeparator />
-                  
-                  <DropdownMenuLabel className="flex items-center gap-2">
-                    <Filter className="w-4 h-4" />
-                    Filters
-                  </DropdownMenuLabel>
                   <DropdownMenuItem
-                    onClick={() => setShowFeaturedOnly(!showFeaturedOnly)}
-                    className="flex items-center justify-between"
+                  onClick={handleClearAllFilters}
+                  className="text-destructive focus:text-destructive"
                   >
-                    <span className="flex items-center gap-2">
-                      <Users className="w-4 h-4" />
-                      Featured Only
-                    </span>
-                    {showFeaturedOnly && (
-                      <Badge variant="secondary" className="text-xs">On</Badge>
-                    )}
+                  Clear All Filters
                   </DropdownMenuItem>
-                  
-                  {getActiveFilterCount() > 0 && (
-                    <>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem
-                        onClick={handleClearAllFilters}
-                        className="text-destructive focus:text-destructive"
-                      >
-                        Clear All Filters
-                      </DropdownMenuItem>
-                    </>
-                  )}
-                </DropdownMenuContent>
+                </>
+                )}
+              </DropdownMenuContent>
               </DropdownMenu>
             </div>
-          </div>
+            </div>
           
           {/* Active Filters Display */}
           {(searchQuery || selectedCategory !== 'All' || sortBy !== 'recent' || showFeaturedOnly) && (

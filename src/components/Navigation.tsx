@@ -154,7 +154,7 @@ export function Navigation() {
             ) : (
               <>
                 <Link to="/login" className="hidden sm:block">
-                  <Button variant="ghost" className="hidden md:flex text-sm px-3">
+                  <Button variant="ghost" className="hidden md:flex text-sm px-3 mb-1">
                     Sign in
                   </Button>
                 </Link>
@@ -242,7 +242,7 @@ export function Navigation() {
             {/* Action Buttons */}
             {isAuthenticated ? (
               <div className="space-y-2">
-                <Link to="/create-campaign" onClick={() => setIsMenuOpen(false)}>
+                <Link to="/create-campaign" className="mb-2" onClick={() => setIsMenuOpen(false)}>
                   <Button className="w-full bg-gradient-primary hover:opacity-90">
                     <Plus className="w-4 h-4 mr-2" />
                     Start Campaign

@@ -65,8 +65,8 @@ export function CategoryFilter({
             )}
           </p>
         </div>
-        
-        <div className="flex flex-wrap gap-2 mb-4">
+
+        <div className="flex overflow-x-auto gap-2 mb-4">
           {categories.slice(0, 5).map((category) => (
             <Button
               key={category.name}
@@ -99,7 +99,7 @@ export function CategoryFilter({
         
         {/* Show more categories in a smaller section */}
         {categories.length > 5 && (
-          <div className="flex flex-wrap gap-2">
+          <div className="flex overflow-x-auto gap-2">
             {categories.slice(5).map((category) => (
               <Button
                 key={category.name}
